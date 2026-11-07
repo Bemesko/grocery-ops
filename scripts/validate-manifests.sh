@@ -14,10 +14,14 @@ readonly CACHE_DIR="${REPO_ROOT}/.cache/kubeconform"
 mkdir -p "${CACHE_DIR}"
 
 while read -r dir; do
+  # Componentes (deploy/components) não se constroem sozinhos: entram pelos overlays.
+  if grep -q '^kind: Component' "${dir}/kustomization.yaml"; then
+    continue
+  fi
   echo "==> ${dir#"${REPO_ROOT}/"}"
   rendered="$("${REPO_ROOT}/scripts/kustomize-build.sh" "${dir}")"
-  # O schema do `Cluster` (CRD do CNPG) não está no catálogo padrão; o e2e do CI aplica o
-  # manifest contra o CRD real.
+  # O schema do `Cluster` (CRD do CNPG, components/postgres-cnpg) não está no catálogo
+  # padrão do kubeconform.
   kubeconform -strict -summary -skip Cluster \
     -kubernetes-version "${KUBERNETES_VERSION}" \
     -cache "${CACHE_DIR}" \

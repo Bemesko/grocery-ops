@@ -1,6 +1,11 @@
 # Sincronizado pelo ArgoCD do repo central (bernats-homelab/2026-kubernetes), na tag
 # fixada em kubernetes/apps/values.yaml. Sem `namespace:`: ele vem do destination da
-# Application. `base` não tem Ingress (é o que roda no CI, sem tailnet).
+# Application. `base` é o app sem infraestrutura: sem Ingress, sem banco e sem destino de
+# telemetria. Contratos que os overlays cumprem:
+#   - Secret `grocery-ops-db`, chave DATABASE_URL (URL de um Postgres qualquer); um
+#     componente pode apontar para outro secret (components/postgres-cnpg);
+#   - ConfigMap `grocery-ops-otel` (opcional) com variáveis OTEL_* (OTEL_EXPORTER_OTLP_ENDPOINT
+#     liga a telemetria).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 labels:
@@ -10,7 +15,6 @@ labels:
 resources:
   - deployment.yaml
   - service.yaml
-  - database.yaml
 # Segredos com KSOPS: veja o README ("Segredos").
 # generators:
 #   - secret-generator.yaml

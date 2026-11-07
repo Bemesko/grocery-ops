@@ -29,5 +29,6 @@ export default defineEventHandler(async (event) => {
       ${linha.preco}, ${linha.precoCheio}, ${Boolean(naLista)}, ${totalItem(quantidade, linha.preco!)})
     returning id
   `
+  metricas.itensCarrinho.add(1, { 'grocery.from_list': Boolean(naLista) })
   return { id: criado!.id, itemId: item.id }
 })

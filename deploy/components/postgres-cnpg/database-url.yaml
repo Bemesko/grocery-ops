@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grocery-ops
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: grocery-ops-db-app
+                  key: uri

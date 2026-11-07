@@ -1,0 +1,71 @@
+# OTel Collector do e2e: recebe OTLP do app e imprime tudo no log (exporter debug), onde o
+# CI procura spans e métricas. Mesma imagem e versão do otel-agent do repo central.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grocery-ops-otelcol
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: otelcol
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: otelcol
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: otelcol
+          # Resolvido por `images:` na kustomization deste overlay (por digest).
+          image: otelcol-image
+          args: [--config=/conf/config.yaml]
+          ports:
+            - name: otlp-http
+              containerPort: 4318
+            - name: health
+              containerPort: 13133
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+      volumes:
+        - name: config
+          configMap:
+            name: grocery-ops-otelcol
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grocery-ops-otelcol
+spec:
+  selector:
+    app.kubernetes.io/component: otelcol
+  ports:
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http

@@ -12,7 +12,7 @@ function conectar(): Sql {
   if (!url) {
     throw createError({ statusCode: 503, message: 'DATABASE_URL não configurada' })
   }
-  conexao = postgres(url, {
+  conexao = instrumentarSql(postgres(url, {
     max: 5,
     onnotice: () => {},
     // colunas snake_case no banco, camelCase no JS
@@ -24,7 +24,7 @@ function conectar(): Sql {
       // `date` como texto AAAA-MM-DD, sem virar meia-noite UTC.
       dia: { to: 1082, from: [1082], serialize: (x: string) => x, parse: (x: string) => x },
     },
-  }) as unknown as Sql
+  }) as unknown as Sql)
   return conexao
 }
 
@@ -38,7 +38,7 @@ async function migrar(sql: Sql) {
       if (feitas.has(m.id)) continue
       await tx.unsafe(m.sql)
       await tx`insert into migracao (id) values (${m.id})`
-      console.info(`[db] migração aplicada: ${m.id}`)
+      log('info', 'migração aplicada', { migracao: m.id })
     }
   })
 }
@@ -55,7 +55,7 @@ export async function useDb(): Promise<Sql> {
   try {
     await pronto
   } catch (erro) {
-    console.error('[db] banco indisponível:', erro)
+    log('error', 'banco indisponível', { erro: String(erro) })
     throw createError({ statusCode: 503, message: 'Banco de dados indisponível' })
   }
   return sql

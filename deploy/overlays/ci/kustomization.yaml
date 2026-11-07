@@ -1,0 +1,28 @@
+# Usado só pelo e2e do CI: o app com um Postgres simples (sem operador) e um OTel
+# Collector que imprime o que recebe, para o e2e conferir traces e métricas. Prova o
+# contrato genérico da base, sem depender de nada instalado no cluster.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - postgres.yaml
+  - otelcol.yaml
+secretGenerator:
+  # Postgres do CI aceita conexões sem senha (POSTGRES_HOST_AUTH_METHOD=trust).
+  - name: grocery-ops-db
+    literals:
+      - DATABASE_URL=postgres://app@grocery-ops-postgres:5432/app
+configMapGenerator:
+  - name: grocery-ops-otel
+    literals:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://grocery-ops-otelcol:4318
+      - OTEL_METRIC_EXPORT_INTERVAL=5000
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=ci
+  - name: grocery-ops-otelcol
+    files:
+      - config.yaml=otelcol-config.yaml
+images:
+  # 0.163.2, a mesma do otel-agent do repo central (kubernetes/values/otel-agent.yaml)
+  - name: otelcol-image
+    newName: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib
+    digest: sha256:7f22d2a6748110ffb6a59bc0df448bccbf501cdb667d610ede4c61d3863d5849

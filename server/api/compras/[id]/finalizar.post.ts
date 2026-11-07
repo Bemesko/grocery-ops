@@ -19,5 +19,10 @@ export default defineEventHandler(async (event) => {
     `
     await tx`update lista_item set nesta_ida = false where status = 'aberto'`
   })
-  return resumoCompra(sql, id)
+  const resumo = await resumoCompra(sql, id)
+  const atributos = { 'grocery.market': resumo.compra.mercado }
+  metricas.comprasFinalizadas.add(1, atributos)
+  metricas.valorCompra.record(resumo.compra.total / 100, atributos)
+  log('info', 'compra finalizada', { compra_id: id, total_centavos: resumo.compra.total, itens: resumo.itens.length })
+  return resumo
 })

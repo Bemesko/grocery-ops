@@ -106,8 +106,8 @@ Datas e semanas em `America/Sao_Paulo` (o container roda em UTC).
 - **Ciclo**: do dia 1 ao último dia do mês.
 - **Período**: a interseção da semana (segunda a domingo) com o ciclo. Uma semana que atravessa o dia 1 vira dois períodos.
 - **Saldo atual** `S` = último ajuste − compras finalizadas depois dele.
-- `G` = compras do período finalizadas depois do último ajuste.
-- `S0 = S + G`: o saldo no início do período (um ajuste no meio da semana recalcula a semana a partir do novo saldo).
+- `G` = todas as compras finalizadas do período, inclusive as feitas antes do último ajuste.
+- `S0 = S + G`: o saldo no início do período. O saldo pode ser ajustado em qualquer dia e os budgets são recalculados na hora; como `G` continua contando o que a semana já gastou, o ajuste não devolve esse dinheiro à semana atual.
 - `D` = dias do início do período até o fim do ciclo; `d` = dias do período.
 - **Budget do período** `B = S0 × d / D`. O que sobra se redistribui sozinho, porque cada período recalcula a partir do saldo.
 - **Restante** = `B − G − carrinho`.
@@ -185,11 +185,13 @@ Linhas com o mesmo `data` + `mercado` (+ `compra`) formam uma compra. Fluxo: env
 
 - **v1.1**: NFC-e de SC. Primeiro um spike: confirmar que a página de consulta da SEFAZ-SC (a URL do QR code) pode ser lida pelo servidor, sem captcha. Depois: ler o QR com a câmera (o PWA precisa de HTTPS, que o ingress do Tailscale fornece), guardar a chave e conferir o total.
 - **v2**: importar os itens da NFC-e e casar com os itens do app (as descrições da nota são abreviadas); ordem de corredores por mercado; assistente "encaixar no budget"; tamanho da embalagem para comparação exata; evolução de preço e inflação da cesta.
+- **Dia preferencial de compra** (a priorizar): definir o dia da semana em que a casa costuma ir ao mercado e cortar os períodos de budget a partir dele (ex.: sábado a sexta), em vez de segunda a domingo. Muda `periodoDe` e as contagens de dias `d` e `D`.
 - **v3**: sugestão de itens pelo padrão de recompra; foto da etiqueta e código de barras; outros estabelecimentos pagos com VR (padaria, açougue, sacolão); modo offline.
 
 ## Decisões técnicas
 
-- **Postgres no cluster**: `Cluster` do CNPG em [deploy/base/database.yaml](../deploy/base/database.yaml), com a credencial vinda do secret `grocery-ops-db-app` que o próprio CNPG gera (sem SOPS). O e2e do CI instala o operador do CNPG (versão e sha256 fixados) antes de aplicar `deploy/base`, e confere que a API responde com o seed.
+- **Postgres desacoplado**: o app só conhece `DATABASE_URL`. A base do deploy exige um Secret `grocery-ops-db`; o overlay do cluster usa o componente opcional [postgres-cnpg](../deploy/components/postgres-cnpg/kustomization.yaml), que cria o `Cluster` e aponta para o secret gerado pelo CNPG. O e2e usa um Postgres simples (overlay `ci`), sem operador.
+- **Observabilidade**: OpenTelemetry com traces e métricas por OTLP (SDK em `otel/`, ligado por `OTEL_EXPORTER_OTLP_ENDPOINT`) e logs em JSON no stdout com `trace_id`, lidos pelo coletor do cluster. No homelab o destino é o `otel-agent` (ADR 008 do repo central). O e2e confere que traces e métricas chegam a um coletor.
 - **Migrações**: SQL versionado em [server/db/migracoes.ts](../server/db/migracoes.ts), aplicado na subida com advisory lock. O driver é o `postgres` (porsager), sem ORM.
 - **Desenvolvimento local**: `make db` sobe um Postgres em container; `make dev` e `make run` apontam para ele.
 - **Busca de nomes parecidos**: roda no cliente sobre a lista completa de itens ([shared/utils/busca.ts](../shared/utils/busca.ts)), sem extensão no Postgres.

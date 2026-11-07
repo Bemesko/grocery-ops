@@ -2,7 +2,7 @@
 // fora do ar (o CNPG pode demorar a ficar pronto), e as rotas da API tentam de novo.
 export default defineNitroPlugin(() => {
   if (!process.env.DATABASE_URL) {
-    console.warn('[db] DATABASE_URL não configurada: a API vai responder 503')
+    log('warn', 'DATABASE_URL não configurada: a API vai responder 503')
     return
   }
   const tentar = (tentativa: number) => {
