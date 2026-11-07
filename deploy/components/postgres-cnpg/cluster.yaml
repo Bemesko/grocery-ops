@@ -1,5 +1,5 @@
 # Postgres do app, gerenciado pelo operador CloudNativePG do cluster (recurso namespaced).
-# O CNPG cria o secret `grocery-ops-db-app` (chave `uri`), que o Deployment lê como
+# O CNPG cria o secret `grocery-ops-db-app` (chave `uri`), que database-url.yaml liga ao
 # DATABASE_URL. O schema é criado pelo próprio app na subida (server/db/migracoes.ts).
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster

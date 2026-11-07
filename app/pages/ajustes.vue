@@ -31,7 +31,10 @@
           <input v-model="saldoTexto" class="cresce" inputmode="decimal" placeholder="Saldo de hoje (R$)" />
           <button type="submit" class="primario" :disabled="parseDinheiro(saldoTexto) === null">Ajustar</button>
         </form>
-        <p class="suave dica">No dia 1, ajuste com o saldo depois da recarga.</p>
+        <p class="suave dica">
+          Ajuste quando quiser (depois da recarga, ou ao conferir o app do VR): os budgets são recalculados
+          na hora, e o que a semana já gastou continua contando nela.
+        </p>
         <details v-if="saldo?.ajustes.length">
           <summary class="suave">Ajustes anteriores</summary>
           <ul class="simples">

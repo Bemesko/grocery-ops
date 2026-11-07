@@ -1,6 +1,15 @@
-# Usado no notebook (tailscaleOperator.enabled no repo central): base + Ingress na tailnet.
+# Usado no notebook (tailscaleOperator.enabled no repo central): base + Ingress na tailnet,
+# Postgres pelo CNPG do cluster e telemetria para o otel-agent (ADR 008 do repo central:
+# o agent acrescenta os metadados do k8s, recebe OTLP dos apps e já coleta os logs dos pods).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
   - ingress.yaml
+components:
+  - ../../components/postgres-cnpg
+configMapGenerator:
+  - name: grocery-ops-otel
+    literals:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-agent.observability.svc:4318
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=homelab

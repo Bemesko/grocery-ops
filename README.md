@@ -10,7 +10,8 @@ PWA de lista de compras e acompanhamento do carrinho no mercado. Roda no cluster
 - **PWA** com [`@vite-pwa/nuxt`](https://vite-pwa-org.netlify.app/frameworks/nuxt):
   - manifest e service worker com precache da casca (abre sem sinal no mercado);
   - ícones gerados no build a partir de [`public/icon.svg`](public/icon.svg).
-- **Postgres** (CloudNativePG no cluster, [deploy/base/database.yaml](deploy/base/database.yaml)); o schema é migrado pelo app na subida ([server/db/migracoes.ts](server/db/migracoes.ts)).
+- **Postgres** qualquer, via `DATABASE_URL`; o schema é migrado pelo app na subida ([server/db/migracoes.ts](server/db/migracoes.ts)). No cluster ele vem do CloudNativePG, por um componente opcional do kustomize.
+- **OpenTelemetry**: traces (HTTP da API e cada consulta ao Postgres) e métricas (HTTP, runtime do Node e de negócio: compras, valor, itens do carrinho) por OTLP. O SDK fica em [otel/](otel/instrumentation.mjs) e só liga com `OTEL_EXPORTER_OTLP_ENDPOINT`. Logs saem em JSON no stdout com `trace_id`.
 
 ```
 app/            front (Vue): app.vue, pages/
@@ -20,7 +21,8 @@ server/db/      migrações do Postgres
 shared/         código usado no front e na API (texto, busca, budget, tipos)
 docs/           especificação da v1 e modelo de CSV
 public/         estáticos (icon.svg → ícones do PWA)
-deploy/         kustomize que o cluster sincroniza (base = CI, overlays/tailscale = notebook)
+otel/           SDK do OpenTelemetry (pacote próprio, carregado com node --import)
+deploy/         kustomize: base (só o app), components/postgres-cnpg, overlays/tailscale (notebook) e overlays/ci (e2e)
 ```
 
 ## Desenvolvimento (WSL)
@@ -53,7 +55,7 @@ Para uma versão nova:
 1. Rode *Actions → release → Run workflow* na `main` com `vX.Y.Z`. O workflow publica `ghcr.io/bemesko/grocery-ops`, grava o digest em `deploy/base/kustomization.yaml` e cria a tag.
 2. Abra um PR no repo central trocando o `targetRevision`. O resumo do job mostra o trecho pronto.
 
-O CI ([ci.yaml](.github/workflows/ci.yaml)) roda o pre-commit e um e2e: constrói a imagem, sobe num k3s no runner e confere `/healthz`.
+O CI ([ci.yaml](.github/workflows/ci.yaml)) roda o pre-commit e um e2e: constrói a imagem, sobe `deploy/overlays/ci` num k3s no runner (com um Postgres simples e um OTel Collector) e confere `/healthz`, a API com o banco e a chegada de traces e métricas ao coletor.
 
 ### O que o cluster espera
 
@@ -61,6 +63,8 @@ O CI ([ci.yaml](.github/workflows/ci.yaml)) roda o pre-commit e um e2e: constró
 |---|---|
 | Porta / health | `8080`, `GET /healthz` → `ok` |
 | Usuário | não-root (`node`, uid 1000); raiz somente leitura, `/tmp` em `emptyDir` |
-| Recursos | só namespaced (AppProject `homelab-apps`); o Postgres é um `Cluster` do CNPG em `deploy/base` (o operador precisa estar instalado no cluster) |
+| Recursos | só namespaced (AppProject `homelab-apps`) |
+| Banco | contrato da base: Secret `grocery-ops-db` com `DATABASE_URL`. O overlay `tailscale` usa o componente [postgres-cnpg](deploy/components/postgres-cnpg/kustomization.yaml) (precisa do operador CNPG no cluster); para outro Postgres, troque o componente |
+| Telemetria | ConfigMap opcional `grocery-ops-otel` com variáveis `OTEL_*`. O overlay `tailscale` aponta para o `otel-agent.observability.svc:4318` (ADR 008 do repo central) |
 | Segredos | `deploy/**.sops.yaml` + KSOPS (veja [secret-generator.yaml](deploy/base/secret-generator.yaml)) |
 | Repo e imagem | públicos: a credencial do ArgoCD só cobre a org `bernats-homelab` |

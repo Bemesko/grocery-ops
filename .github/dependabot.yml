@@ -12,6 +12,15 @@ updates:
     groups:
       nuxt:
         patterns: ["nuxt", "vue", "@vite-pwa/*"]
+      opentelemetry:
+        patterns: ["@opentelemetry/*"]
+  - package-ecosystem: npm
+    directory: /otel
+    schedule:
+      interval: weekly
+    groups:
+      opentelemetry:
+        patterns: ["@opentelemetry/*", "import-in-the-middle"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

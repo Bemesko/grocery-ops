@@ -8,6 +8,8 @@
     "preview": "nuxt preview"
   },
   "dependencies": {
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/core": "3.0.0",
     "nuxt": "^4.6.4",
     "postgres": "^3.4.9",
     "vue": "^3.5.45"

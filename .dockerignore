@@ -3,7 +3,7 @@
 .cache
 .nuxt
 .output
-node_modules
+**/node_modules
 deploy
 scripts
 *.md

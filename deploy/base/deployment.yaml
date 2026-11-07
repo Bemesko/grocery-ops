@@ -24,12 +24,20 @@ spec:
             - name: http
               containerPort: 8080
           env:
-            # Gerado pelo CNPG (database.yaml). O pod espera o secret existir para subir.
+            # Contrato com o overlay (veja kustomization.yaml). O pod espera o secret existir.
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: grocery-ops-db-app
-                  key: uri
+                  name: grocery-ops-db
+                  key: DATABASE_URL
+            - name: OTEL_SERVICE_NAME
+              value: grocery-ops
+          # Destino e ajustes da telemetria (OTEL_*), definidos pelo overlay. Sem o
+          # ConfigMap, o app sobe com a telemetria desligada.
+          envFrom:
+            - configMapRef:
+                name: grocery-ops-otel
+                optional: true
           readinessProbe:
             httpGet:
               path: /healthz
