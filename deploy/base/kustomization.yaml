@@ -5,7 +5,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 labels:
   - pairs:
-      app.kubernetes.io/name: app-template
+      app.kubernetes.io/name: grocery-ops
     includeSelectors: true
 resources:
   - deployment.yaml
@@ -18,5 +18,5 @@ resources:
 # Mantenha este bloco no fim do arquivo.
 images:
   - name: app-image
-    newName: ghcr.io/bernats-homelab/repotpl-k8s-app
-    digest: sha256:fddf81fcc9cd0079faf9ef391ce5b699204270536620806a7d1ddb1f4fbb0194
+    newName: ghcr.io/bemesko/grocery-ops
+    newTag: unreleased

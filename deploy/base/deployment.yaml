@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app-template
+  name: grocery-ops
 spec:
   replicas: 1
   selector:
@@ -11,9 +11,9 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        # usuário `nginx` da imagem nginx-unprivileged; ajuste ao trocar a imagem
-        runAsUser: 101
-        runAsGroup: 101
+        # usuário `node` da imagem node:*-alpine (USER node no Dockerfile)
+        runAsUser: 1000
+        runAsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -33,11 +33,11 @@ spec:
               port: http
           resources:
             requests:
-              cpu: 10m
-              memory: 32Mi
+              cpu: 25m
+              memory: 64Mi
             limits:
-              cpu: 200m
-              memory: 128Mi
+              cpu: 500m
+              memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

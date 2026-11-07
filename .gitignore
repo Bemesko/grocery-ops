@@ -13,3 +13,9 @@ kubeconfig*.yml
 # Ferramentas
 .venv/
 .cache/
+
+# Nuxt / Node
+node_modules/
+.nuxt/
+.output/
+.data/

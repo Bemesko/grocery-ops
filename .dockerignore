@@ -1,0 +1,9 @@
+.git
+.github
+.cache
+.nuxt
+.output
+node_modules
+deploy
+scripts
+*.md

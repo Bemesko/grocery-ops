@@ -1,16 +1,16 @@
-# Exposto na tailnet como https://app-template.<sua-tailnet> com TLS automático do Tailscale.
+# Exposto na tailnet como https://grocery-ops.<sua-tailnet> com TLS automático do Tailscale.
 # O host precisa ser único na tailnet (scripts/init.sh usa o nome da app).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: app-template
+  name: grocery-ops
 spec:
   ingressClassName: tailscale
   defaultBackend:
     service:
-      name: app-template
+      name: grocery-ops
       port:
         name: http
   tls:
     - hosts:
-        - app-template
+        - grocery-ops

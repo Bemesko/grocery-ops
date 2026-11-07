@@ -59,6 +59,8 @@ jobs:
           context: .
           push: true
           tags: ${{ env.IMAGE }}:${{ env.VERSION }}
+          # Exposta em /api/version (NUXT_APP_VERSION no Dockerfile)
+          build-args: VERSION=${{ env.VERSION }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.version=${{ env.VERSION }}

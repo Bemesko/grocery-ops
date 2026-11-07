@@ -1,83 +1,62 @@
-# repotpl-k8s-app
+# grocery-ops
 
-Template de repositório para apps que rodam no cluster k3s do notebook, gerenciado pelo repo central [bernats-homelab/2026-kubernetes](https://github.com/bernats-homelab/2026-kubernetes).
+PWA de lista de compras e acompanhamento do carrinho no mercado. Roda no cluster k3s do homelab, em `https://grocery-ops.<sua-tailnet>`, e pode ser instalado no celular.
 
-O repo da app tem o código, o `Dockerfile` e os manifests kustomize em `deploy/`. O repo central só declara uma Application do ArgoCD que aponta para uma **tag** deste repo, do mesmo jeito que ele fixa a versão dos charts de terceiros.
+**Estado:** só a estrutura. A página é um placeholder, que já é instalável, abre offline e mostra a versão vinda da API.
+
+## Stack
+
+- **Nuxt 4 como monolito:** SPA (`ssr: false`) e API (Nitro, `server/api`) no mesmo processo Node e na mesma imagem.
+- **PWA** com [`@vite-pwa/nuxt`](https://vite-pwa-org.netlify.app/frameworks/nuxt):
+  - manifest e service worker com precache da casca (abre sem sinal no mercado);
+  - ícones gerados no build a partir de [`public/icon.svg`](public/icon.svg).
+- **Próximo passo previsto:** sincronizar as listas entre celulares pela API, com um Postgres (CNPG) declarado em `deploy/`.
 
 ```
-este repo                                      repo central (2026-kubernetes)
-  Dockerfile, app/                               kubernetes/apps/values.yaml
-  deploy/base           ◀── CI (sem tailnet)        apps:
-  deploy/overlays/tailscale ◀── notebook              <nome>:
-  release.yaml ──▶ ghcr.io/<repo>@sha256 ──▶ tag vX.Y.Z ◀── targetRevision: vX.Y.Z
-                                                 ArgoCD (AppProject homelab-apps) sincroniza
+app/            front (Vue): app.vue, pages/
+server/routes/  /healthz (probes do Kubernetes e e2e)
+server/api/     API; hoje só /api/version
+public/         estáticos (icon.svg → ícones do PWA)
+deploy/         kustomize que o cluster sincroniza (base = CI, overlays/tailscale = notebook)
 ```
 
-## Criar uma app a partir do template
+## Desenvolvimento (WSL)
 
-1. **Novo repo:** em *Use this template* → *Create a new repository* na org `bernats-homelab`. Pode ser privado.
-2. **Inicializar** (no WSL, com `make deps` já rodado):
-   ```bash
-   scripts/init.sh <nome>     # nome DNS-1123: vira Deployment/Service e https://<nome>.<sua-tailnet>
-   pre-commit install
-   make test
-   ```
-   O CI falha enquanto o placeholder `app-template` existir em `deploy/` ou `app/`.
-3. **Código:** troque `app/`, `nginx.conf` e o `Dockerfile` pela sua aplicação. Mantenha:
-   - usuário não-root, com o `runAsUser` correspondente em `deploy/base/deployment.yaml`;
-   - porta `8080` e um endpoint `/healthz` (ou ajuste as probes e o teste do CI);
-   - imagem base por digest.
-4. **Primeiro release:** *Actions → release → Run workflow* na `main` com `v0.1.0`. O workflow publica `ghcr.io/<repo>:v0.1.0`, grava o digest em `deploy/base/kustomization.yaml`, comita na `main` e cria a tag e o GitHub Release.
-5. **Publicar no cluster:** PR no repo central adicionando a app em `kubernetes/apps/values.yaml`. O resumo do job de release mostra o trecho pronto:
-   ```yaml
-   apps:
-     <nome>:
-       repoURL: https://github.com/bernats-homelab/<repo>
-       targetRevision: v0.1.0
-   ```
-   Depois do merge, o ArgoCD cria o namespace `<nome>` e sincroniza `deploy/overlays/tailscale`.
+Não precisa instalar Node: o `npm` roda via Docker na mesma imagem do `Dockerfile`, fixada por digest.
 
-Para cada versão nova: rode o release com `vX.Y.Z` e abra o PR no central trocando o `targetRevision`.
+```bash
+make deps && pre-commit install   # uma vez: ferramentas de validação
+make install                      # npm ci
+make dev                          # http://localhost:3000
+make run                          # imagem de produção em http://localhost:8080 (raiz read-only, como no cluster)
+make test                         # pre-commit + kubeconform/kube-linter de deploy/
+```
 
-## O que o cluster espera deste repo
+O service worker só é gerado no build de produção. Para testar a instalação do PWA, use `make run` ou o próprio cluster, que serve via HTTPS da tailnet.
 
-| Caminho | Uso |
+## Deploy
+
+Este repo foi gerado do template [bernats-homelab/repotpl-k8s-app](https://github.com/bernats-homelab/repotpl-k8s-app). O cluster é gerenciado pelo [bernats-homelab/2026-kubernetes](https://github.com/bernats-homelab/2026-kubernetes), que fixa a versão em `kubernetes/apps/values.yaml`:
+
+```yaml
+apps:
+  grocery-ops:
+    repoURL: https://github.com/Bemesko/grocery-ops
+    targetRevision: vX.Y.Z
+```
+
+Para uma versão nova:
+1. Rode *Actions → release → Run workflow* na `main` com `vX.Y.Z`. O workflow publica `ghcr.io/bemesko/grocery-ops`, grava o digest em `deploy/base/kustomization.yaml` e cria a tag.
+2. Abra um PR no repo central trocando o `targetRevision`. O resumo do job mostra o trecho pronto.
+
+O CI ([ci.yaml](.github/workflows/ci.yaml)) roda o pre-commit e um e2e: constrói a imagem, sobe num k3s no runner e confere `/healthz`.
+
+### O que o cluster espera
+
+| | |
 |---|---|
-| `deploy/base` | Sincronizado no CI do central (sem Tailscale). Sem `namespace:`: ele vem da Application. Sem Ingress. |
-| `deploy/overlays/tailscale` | Sincronizado no notebook: `base` + Ingress `ingressClassName: tailscale`. |
-| `images: app-image` em `deploy/base/kustomization.yaml` | Sempre por digest, gravado pelo `release.yaml`. Não edite à mão. |
-| tags `vX.Y.Z` | O central só aceita tags semver (o `values.schema.json` dele valida). |
-
-As Applications de apps externas rodam no AppProject `homelab-apps`. Ele só aceita repos `bernats-homelab/*`, não permite recursos cluster-scoped (fora `Namespace`) e bloqueia os namespaces do sistema e da plataforma (`argocd`, `kube-system`, `tailscale`, `cnpg-system`, `immich`…). Um `ClusterRole`, CRD ou webhook neste repo falha no sync.
-
-Os manifests precisam passar no `kube-linter` (`.kube-linter.yaml`): probes, requests de CPU/memória, `runAsNonRoot`, `readOnlyRootFilesystem`, capabilities removidas. Precisa escrever em disco? Monte um `emptyDir`, como o `/tmp` do exemplo.
-
-## Segredos
-
-Os segredos são commitados criptografados (SOPS + age), e o ArgoCD os descriptografa com KSOPS usando a chave do cluster. O `.sops.yaml` já tem as chaves públicas do WSL (para editar) e do cluster (para sincronizar).
-
-1. Crie o Secret em texto claro, por exemplo `deploy/base/app-secret.sops.yaml` (`kind: Secret`, `stringData`), e criptografe **no lugar**:
-   ```bash
-   sops encrypt --in-place deploy/base/app-secret.sops.yaml
-   ```
-2. Liste o arquivo em `files:` de [deploy/base/secret-generator.yaml](deploy/base/secret-generator.yaml) e descomente `generators:` na kustomization.
-3. Para editar depois: `sops deploy/base/app-secret.sops.yaml`.
-
-O hook `sops-encrypted` barra arquivos descriptografados. No pre-commit e no CI, sem chave, o `scripts/ksops-stub.py` gera o Secret com valores placeholder só para validar a estrutura.
-
-## Repos privados
-
-- **Git:** o ArgoCD lê os repos da org com uma GitHub App, configurada no repo central. Confira se a App está instalada no repo novo (ou em *All repositories*).
-- **Imagens:** os pacotes GHCR de repos privados são privados. O k3s autentica no `ghcr.io` (`registries.yaml`, configurado pelo central), então não é preciso `imagePullSecret`.
-
-## Desenvolvimento
-
-| Comando | O que faz |
-|---|---|
-| `make deps` | Ferramentas com versão e sha256 fixados em `~/.local/bin` (as mesmas do central) |
-| `make test` | pre-commit: higiene, gitleaks, yamllint, shellcheck/shfmt, actionlint, sops, kubeconform + kube-linter |
-| `make build` | `docker build` local |
-
-O CI ([ci.yaml](.github/workflows/ci.yaml)) roda o mesmo pre-commit. Depois sobe um k3s no runner (mesma versão do notebook) com a imagem construída no job e confere que `deploy/base` fica Available e responde `/healthz`.
-
-O próprio template é o *smoke app* do e2e do repo central: o central sincroniza uma tag deste repo para provar o caminho repo externo → AppProject → Application.
+| Porta / health | `8080`, `GET /healthz` → `ok` |
+| Usuário | não-root (`node`, uid 1000); raiz somente leitura, `/tmp` em `emptyDir` |
+| Recursos | só namespaced (AppProject `homelab-apps`); um banco futuro entra como `Cluster` do CNPG em `deploy/` |
+| Segredos | `deploy/**.sops.yaml` + KSOPS (veja [secret-generator.yaml](deploy/base/secret-generator.yaml)) |
+| Repo e imagem | públicos: a credencial do ArgoCD só cobre a org `bernats-homelab` |
