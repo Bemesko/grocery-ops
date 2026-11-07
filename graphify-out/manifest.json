@@ -1,0 +1,176 @@
+{
+  "app/app.vue": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "a0b5f1f2d937f76e323ec4073d7eea9a",
+    "semantic_hash": "a0b5f1f2d937f76e323ec4073d7eea9a"
+  },
+  "app/pages/index.vue": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "861fa98851181b4eabcf806c4cdd7d04",
+    "semantic_hash": "861fa98851181b4eabcf806c4cdd7d04"
+  },
+  "nuxt.config.ts": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "2e15528a07f4080ff85be6790bf8fe95",
+    "semantic_hash": "2e15528a07f4080ff85be6790bf8fe95"
+  },
+  "package.json": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "8820125baceccafb306a7b415c1c54ed",
+    "semantic_hash": "8820125baceccafb306a7b415c1c54ed"
+  },
+  "scripts/check-sops-encrypted.sh": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "9024bd0266af03b59332d649395a505e",
+    "semantic_hash": "9024bd0266af03b59332d649395a505e"
+  },
+  "scripts/init.sh": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "6f05728e200a133d839701f834a4aea7",
+    "semantic_hash": "6f05728e200a133d839701f834a4aea7"
+  },
+  "scripts/ksops-stub.py": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "f52b96d438e48144b2e63d8e46205b3d",
+    "semantic_hash": "f52b96d438e48144b2e63d8e46205b3d"
+  },
+  "scripts/kustomize-build.sh": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "0cd850cc415f77a077480cfbe4aabd68",
+    "semantic_hash": "0cd850cc415f77a077480cfbe4aabd68"
+  },
+  "scripts/set-image.sh": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "7db951a37602f8675bcd42f016d3c47d",
+    "semantic_hash": "7db951a37602f8675bcd42f016d3c47d"
+  },
+  "scripts/setup-tools.sh": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "be848b083fecb8c02cf12109e36955ec",
+    "semantic_hash": "be848b083fecb8c02cf12109e36955ec"
+  },
+  "scripts/validate-manifests.sh": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "38e3a872344cec0869c3adf1c1bfc271",
+    "semantic_hash": "38e3a872344cec0869c3adf1c1bfc271"
+  },
+  "server/api/version.get.ts": {
+    "mtime": 1794083657.161775,
+    "seen": 1794084087.587679,
+    "ast_hash": "6a820101f8dd66bf2fa25c48b305bdde",
+    "semantic_hash": "6a820101f8dd66bf2fa25c48b305bdde"
+  },
+  "server/routes/healthz.get.ts": {
+    "mtime": 1794083657.1627018,
+    "seen": 1794084087.587679,
+    "ast_hash": "eb3b5eff05ba0823792adb73ef35c750",
+    "semantic_hash": "eb3b5eff05ba0823792adb73ef35c750"
+  },
+  ".github/actionlint.yaml": {
+    "mtime": 1794083657.1446075,
+    "seen": 1794084087.587679,
+    "ast_hash": "fb0d84e99c9df7bf194f1baa6dff7378",
+    "semantic_hash": "fb0d84e99c9df7bf194f1baa6dff7378"
+  },
+  ".github/dependabot.yml": {
+    "mtime": 1794083657.1446075,
+    "seen": 1794084087.587679,
+    "ast_hash": "c8b6cfc2f48f4a40b714fc3f1d500955",
+    "semantic_hash": "c8b6cfc2f48f4a40b714fc3f1d500955"
+  },
+  ".github/workflows/ci.yaml": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "812c26f82ba15be7a0c65dea231c45fb",
+    "semantic_hash": "812c26f82ba15be7a0c65dea231c45fb"
+  },
+  ".github/workflows/release.yaml": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "a073b02d831cb16577cc5a7dfe6d8009",
+    "semantic_hash": "a073b02d831cb16577cc5a7dfe6d8009"
+  },
+  ".kube-linter.yaml": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "80c5a870ececc7d05908c04517bb333d",
+    "semantic_hash": "80c5a870ececc7d05908c04517bb333d"
+  },
+  ".pre-commit-config.yaml": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "a326b40c7ad75ce3438a5825f2afbdf1",
+    "semantic_hash": "a326b40c7ad75ce3438a5825f2afbdf1"
+  },
+  ".sops.yaml": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "22952b64ea11b0cdbd120281ce63f176",
+    "semantic_hash": "22952b64ea11b0cdbd120281ce63f176"
+  },
+  ".yamllint.yaml": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "0a3cda4e580fed422ecc6e9ab7e77a4b",
+    "semantic_hash": "0a3cda4e580fed422ecc6e9ab7e77a4b"
+  },
+  "AGENTS.md": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "02f374b53b28e7976d823071b13b7852",
+    "semantic_hash": "02f374b53b28e7976d823071b13b7852"
+  },
+  "README.md": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "fdfa650aa748dc6ef3beec3bedcd60e8",
+    "semantic_hash": "fdfa650aa748dc6ef3beec3bedcd60e8"
+  },
+  "deploy/base/deployment.yaml": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "280205d02eb7773ccf0593e49b0e23de",
+    "semantic_hash": "280205d02eb7773ccf0593e49b0e23de"
+  },
+  "deploy/base/kustomization.yaml": {
+    "mtime": 1794083657.1454313,
+    "seen": 1794084087.587679,
+    "ast_hash": "776312eb862ab16c9a80c40163b8c838",
+    "semantic_hash": "776312eb862ab16c9a80c40163b8c838"
+  },
+  "deploy/base/service.yaml": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "b9a04010266556b1391d8ce6f5865795",
+    "semantic_hash": "b9a04010266556b1391d8ce6f5865795"
+  },
+  "deploy/overlays/tailscale/ingress.yaml": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "351006d9e64dcfbb7fdf722f77375586",
+    "semantic_hash": "351006d9e64dcfbb7fdf722f77375586"
+  },
+  "deploy/overlays/tailscale/kustomization.yaml": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "2d4ff308fbcaff0da9f3e2815a6de5d1",
+    "semantic_hash": "2d4ff308fbcaff0da9f3e2815a6de5d1"
+  },
+  "public/icon.svg": {
+    "mtime": 1794083657.1536648,
+    "seen": 1794084087.587679,
+    "ast_hash": "c0cccc8683a6c1725189bdde1b935c3e",
+    "semantic_hash": "c0cccc8683a6c1725189bdde1b935c3e"
+  }
+}
