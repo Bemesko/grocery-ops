@@ -32,22 +32,44 @@ spec:
               value: app
             - name: POSTGRES_HOST_AUTH_METHOD
               value: trust
+          # Banco descartável: sem fsync (no disco do runner o checkpoint do startup
+          # travava e o liveness matava o pod no meio da inicialização).
+          args:
+            - postgres
+            - -c
+            - fsync=off
+            - -c
+            - synchronous_commit=off
+            - -c
+            - full_page_writes=off
+            - -c
+            - shared_buffers=32MB
           ports:
             - name: postgres
               containerPort: 5432
+          # Só libera liveness/readiness depois de pronto, com até 5 min para o initdb.
+          startupProbe:
+            exec:
+              command: [pg_isready, -U, app, -h, 127.0.0.1]
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
           readinessProbe:
             exec:
-              command: [pg_isready, -U, app]
+              command: [pg_isready, -U, app, -h, 127.0.0.1]
+            timeoutSeconds: 5
           livenessProbe:
             exec:
-              command: [pg_isready, -U, app]
-            initialDelaySeconds: 30
+              command: [pg_isready, -U, app, -h, 127.0.0.1]
+            timeoutSeconds: 5
+            failureThreshold: 6
           resources:
             requests:
               cpu: 50m
-              memory: 64Mi
+              memory: 128Mi
             limits:
-              memory: 256Mi
+              # inclui os dados, que ficam em memória (volume `dados`)
+              memory: 768Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -61,8 +83,11 @@ spec:
             - name: tmp
               mountPath: /tmp
       volumes:
+        # tmpfs: nada de I/O em disco no runner
         - name: dados
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
         - name: run
           emptyDir: {}
         - name: tmp
