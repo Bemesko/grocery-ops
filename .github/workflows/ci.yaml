@@ -130,4 +130,6 @@ jobs:
           sudo k3s kubectl -n ci describe pods || true
           sudo k3s kubectl -n ci logs deployment/grocery-ops --tail=100 || true
           sudo k3s kubectl -n ci logs deployment/grocery-ops-postgres --tail=50 || true
+          sudo k3s kubectl -n ci logs deployment/grocery-ops-postgres --previous --tail=80 || true
+          sudo k3s kubectl -n ci get events --sort-by=.lastTimestamp || true
           sudo k3s kubectl -n ci logs deployment/grocery-ops-otelcol --tail=200 || true
