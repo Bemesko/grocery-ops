@@ -8,10 +8,10 @@ resources:
   - postgres.yaml
   - otelcol.yaml
 secretGenerator:
-  # Postgres do CI aceita conexões sem senha (POSTGRES_HOST_AUTH_METHOD=trust).
+  # Postgres do CI aceita conexões sem senha (pg_hba trust, veja postgres.yaml).
   - name: grocery-ops-db
     literals:
-      - DATABASE_URL=postgres://app@grocery-ops-postgres:5432/app
+      - DATABASE_URL=postgres://app@grocery-ops-postgres:5432/postgres
 configMapGenerator:
   - name: grocery-ops-otel
     literals:
