@@ -16,7 +16,9 @@ mkdir -p "${CACHE_DIR}"
 while read -r dir; do
   echo "==> ${dir#"${REPO_ROOT}/"}"
   rendered="$("${REPO_ROOT}/scripts/kustomize-build.sh" "${dir}")"
-  kubeconform -strict -summary \
+  # O schema do `Cluster` (CRD do CNPG) não está no catálogo padrão; o e2e do CI aplica o
+  # manifest contra o CRD real.
+  kubeconform -strict -summary -skip Cluster \
     -kubernetes-version "${KUBERNETES_VERSION}" \
     -cache "${CACHE_DIR}" \
     -schema-location default - <<<"${rendered}"

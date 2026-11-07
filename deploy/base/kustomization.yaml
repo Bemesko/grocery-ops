@@ -10,6 +10,7 @@ labels:
 resources:
   - deployment.yaml
   - service.yaml
+  - database.yaml
 # Segredos com KSOPS: veja o README ("Segredos").
 # generators:
 #   - secret-generator.yaml

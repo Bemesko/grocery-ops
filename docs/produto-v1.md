@@ -141,14 +141,13 @@ mercado        id, nome (único), tipo [atacado|varejo], criado_em
 item           id, nome, nome_normalizado (único: minúsculo, sem acento, espaços colapsados),
                categoria_id, unidade [un|kg], criado_em
 lista_item     id, item_id, quantidade (texto livre, opcional), prioritario, nesta_ida,
-               status [aberto|comprado|removido], criado_em, resolvido_em,
-               compra_item_id (quando comprado)
+               status [aberto|comprado|removido], criado_em, resolvido_em
                -- único: um lista_item aberto por item
 compra         id, mercado_id, status [em_andamento|finalizada|cancelada],
                data (dia da compra), iniciada_em, finalizada_em,
                total_nota_centavos, chave_nfce (único, v1.1),
                origem [app|importacao|nfce], importacao_id
-compra_item    id, compra_id, item_id, variante, unidade [un|kg], quantidade numeric(10,3),
+compra_item    id, compra_id, item_id, lista_item_id (quando veio da lista), variante, unidade [un|kg], quantidade numeric(10,3),
                preco_unitario_centavos, preco_cheio_centavos, da_lista (nulo = desconhecido),
                total_centavos, criado_em
 saldo_ajuste   id, em (timestamp), saldo_centavos
@@ -188,10 +187,10 @@ Linhas com o mesmo `data` + `mercado` (+ `compra`) formam uma compra. Fluxo: env
 - **v2**: importar os itens da NFC-e e casar com os itens do app (as descrições da nota são abreviadas); ordem de corredores por mercado; assistente "encaixar no budget"; tamanho da embalagem para comparação exata; evolução de preço e inflação da cesta.
 - **v3**: sugestão de itens pelo padrão de recompra; foto da etiqueta e código de barras; outros estabelecimentos pagos com VR (padaria, açougue, sacolão); modo offline.
 
-## Decisões técnicas em aberto
+## Decisões técnicas
 
-- **Postgres no cluster**: `Cluster` do CNPG em `deploy/base`, com a credencial vinda do secret `<cluster>-app` que o próprio CNPG gera (sem SOPS). O e2e do CI aplica `deploy/base` num k3s limpo: ele precisa instalar o operador do CNPG (versão fixada) antes, senão o `apply` falha por falta do CRD.
-- **Migrações e acesso ao banco**: SQL versionado em `server/db/migrations`, aplicado na subida com advisory lock, ou Drizzle (ORM + drizzle-kit). A escolha sai no início da implementação.
-- **Desenvolvimento local**: `make run` precisa de um Postgres; um container a mais no `Makefile`.
-- **Busca de nomes parecidos**: a casa tem centenas de itens, não milhares. A busca pode rodar no cliente sobre a lista completa de nomes, sem extensão no Postgres.
-- **API**: rotas REST em `server/api` por recurso (`lista`, `itens`, `compras`, `mercados`, `categorias`, `saldo`, `gastos`, `importacao`), com o cálculo de budget e estimativas no servidor.
+- **Postgres no cluster**: `Cluster` do CNPG em [deploy/base/database.yaml](../deploy/base/database.yaml), com a credencial vinda do secret `grocery-ops-db-app` que o próprio CNPG gera (sem SOPS). O e2e do CI instala o operador do CNPG (versão e sha256 fixados) antes de aplicar `deploy/base`, e confere que a API responde com o seed.
+- **Migrações**: SQL versionado em [server/db/migracoes.ts](../server/db/migracoes.ts), aplicado na subida com advisory lock. O driver é o `postgres` (porsager), sem ORM.
+- **Desenvolvimento local**: `make db` sobe um Postgres em container; `make dev` e `make run` apontam para ele.
+- **Busca de nomes parecidos**: roda no cliente sobre a lista completa de itens ([shared/utils/busca.ts](../shared/utils/busca.ts)), sem extensão no Postgres.
+- **API**: rotas REST em `server/api` por recurso (`lista`, `itens`, `compras`, `mercados`, `categorias`, `saldo`, `gastos`, `importacao`). Estimativas e saldo saem do servidor; a projeção do budget ([shared/utils/budget.ts](../shared/utils/budget.ts)) roda nos dois lados, para o mercado atualizar a cada item.

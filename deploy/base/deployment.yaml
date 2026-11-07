@@ -23,6 +23,13 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          env:
+            # Gerado pelo CNPG (database.yaml). O pod espera o secret existir para subir.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: grocery-ops-db-app
+                  key: uri
           readinessProbe:
             httpGet:
               path: /healthz

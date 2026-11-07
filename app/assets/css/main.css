@@ -1,0 +1,313 @@
+:root {
+  --fundo: #f6f7f5;
+  --superficie: #ffffff;
+  --borda: #e2e5e0;
+  --texto: #1d2420;
+  --texto-suave: #66706a;
+  --primaria: #2f855a;
+  --primaria-forte: #276749;
+  --primaria-clara: #e6f4ec;
+  --alerta: #b7791f;
+  --alerta-clara: #fdf4e3;
+  --perigo: #c53030;
+  --perigo-clara: #fdecec;
+  --sobe: #c53030;
+  --desce: #2f855a;
+  --raio: 0.75rem;
+  --sombra: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 8px rgb(0 0 0 / 4%);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #121614;
+    --superficie: #1b201d;
+    --borda: #2c332f;
+    --texto: #e7ebe8;
+    --texto-suave: #9aa59f;
+    --primaria: #48bb78;
+    --primaria-forte: #68d391;
+    --primaria-clara: #1c3326;
+    --alerta: #ecc94b;
+    --alerta-clara: #3a3218;
+    --perigo: #fc8181;
+    --perigo-clara: #3d1f1f;
+    --sobe: #fc8181;
+    --desce: #68d391;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: var(--primaria);
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.05rem;
+  margin: 1.25rem 0 0.5rem;
+}
+
+h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-suave);
+  margin: 1rem 0 0.35rem;
+}
+
+.pagina {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 6rem;
+}
+
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.cartao {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--sombra);
+}
+
+.suave {
+  color: var(--texto-suave);
+  font-size: 0.875rem;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+button,
+.botao {
+  font: inherit;
+  border: 1px solid var(--borda);
+  background: var(--superficie);
+  color: var(--texto);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.5rem;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primario,
+.botao.primario {
+  background: var(--primaria);
+  border-color: var(--primaria);
+  color: #fff;
+  font-weight: 600;
+}
+
+button.perigo {
+  color: var(--perigo);
+  border-color: var(--perigo);
+  background: transparent;
+}
+
+button.texto {
+  border: 0;
+  background: transparent;
+  color: var(--primaria);
+  padding: 0.25rem 0.5rem;
+  min-height: auto;
+}
+
+button.icone {
+  border: 0;
+  background: transparent;
+  padding: 0.25rem;
+  min-width: 2.5rem;
+  font-size: 1.25rem;
+}
+
+input,
+select {
+  font: inherit;
+  color: var(--texto);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+input:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid var(--primaria);
+  outline-offset: 1px;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  margin: 0.6rem 0 0.25rem;
+}
+
+.linha {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.linha > .cresce {
+  flex: 1;
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  min-height: 2.25rem;
+  font-size: 0.9rem;
+}
+
+.chip.ativo {
+  background: var(--primaria);
+  border-color: var(--primaria);
+  color: #fff;
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  overflow: hidden;
+}
+
+.lista > li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-top: 1px solid var(--borda);
+  min-height: 3rem;
+}
+
+.lista > li:first-child {
+  border-top: 0;
+}
+
+.selo {
+  font-size: 0.75rem;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.selo.sobe {
+  color: var(--sobe);
+  background: var(--perigo-clara);
+}
+
+.selo.desce {
+  color: var(--desce);
+  background: var(--primaria-clara);
+}
+
+.selo.igual,
+.selo.neutro {
+  color: var(--texto-suave);
+  background: var(--fundo);
+}
+
+.ok {
+  color: var(--primaria);
+}
+
+.atencao {
+  color: var(--alerta);
+}
+
+.ruim {
+  color: var(--perigo);
+}
+
+.aviso {
+  border-radius: var(--raio);
+  padding: 0.6rem 0.8rem;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.aviso.alerta {
+  background: var(--alerta-clara);
+}
+
+.aviso.perigo {
+  background: var(--perigo-clara);
+}
+
+.aviso.info {
+  background: var(--primaria-clara);
+}
+
+.vazio {
+  text-align: center;
+  color: var(--texto-suave);
+  padding: 2rem 1rem;
+}
+
+.barra {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--fundo);
+  overflow: hidden;
+}
+
+.barra > span {
+  display: block;
+  height: 100%;
+  background: var(--primaria);
+  border-radius: 999px;
+}
