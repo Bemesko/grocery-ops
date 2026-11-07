@@ -1,11 +1,12 @@
-// Monolito: SPA (ssr: false) + API no mesmo servidor Nitro. O service worker cacheia a
-// casca e o app abre offline no mercado; a sincronização entre celulares vai crescer em
-// server/api. A rota / é pré-renderizada para virar index.html e entrar no precache.
+// Monolito: SPA (ssr: false) + API no mesmo servidor Nitro, com Postgres (DATABASE_URL).
+// O service worker cacheia a casca; os dados vêm sempre da API (sem modo offline na v1).
+// A rota / é pré-renderizada para virar index.html e entrar no precache.
 export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',
   ssr: false,
   devtools: { enabled: false },
   modules: ['@vite-pwa/nuxt'],
+  css: ['~/assets/css/main.css'],
 
   app: {
     head: {
