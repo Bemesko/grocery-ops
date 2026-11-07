@@ -25,42 +25,38 @@ spec:
       containers:
         - name: postgres
           image: postgres:18.1-alpine@sha256:aa6eb304ddb6dd26df23d05db4e5cb05af8951cda3e0dc57731b771e0ef4ab29
-          env:
-            - name: POSTGRES_USER
-              value: app
-            - name: POSTGRES_DB
-              value: app
-            - name: POSTGRES_HOST_AUTH_METHOD
-              value: trust
-          # Banco descartável: sem fsync (no disco do runner o checkpoint do startup
-          # travava e o liveness matava o pod no meio da inicialização).
+          # Sem o docker-entrypoint.sh: no k3s do runner o servidor travava no primeiro I/O
+          # depois de subir (no startup e no psql do entrypoint). Aqui o initdb roda direto,
+          # sem fsync, com I/O síncrono (io_method=sync, novo no 18) e sem huge pages.
+          # Banco descartável, só para o e2e: superusuário `app`, sem senha, banco `postgres`.
+          command: [sh, -c]
           args:
-            - postgres
-            - -c
-            - fsync=off
-            - -c
-            - synchronous_commit=off
-            - -c
-            - full_page_writes=off
-            - -c
-            - shared_buffers=32MB
+            - |
+              set -eu
+              if [ ! -s "$PGDATA/PG_VERSION" ]; then
+                mkdir -p "$PGDATA"
+                initdb --username=app --auth=trust --no-sync --no-instructions
+                echo "host all all all trust" >> "$PGDATA/pg_hba.conf"
+              fi
+              exec postgres -c listen_addresses='*' -c fsync=off -c synchronous_commit=off \
+                -c full_page_writes=off -c shared_buffers=32MB -c io_method=sync -c huge_pages=off
           ports:
             - name: postgres
               containerPort: 5432
           # Só libera liveness/readiness depois de pronto, com até 5 min para o initdb.
           startupProbe:
             exec:
-              command: [pg_isready, -U, app, -h, 127.0.0.1]
+              command: [pg_isready, -U, app, -d, postgres, -h, 127.0.0.1]
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 60
           readinessProbe:
             exec:
-              command: [pg_isready, -U, app, -h, 127.0.0.1]
+              command: [pg_isready, -U, app, -d, postgres, -h, 127.0.0.1]
             timeoutSeconds: 5
           livenessProbe:
             exec:
-              command: [pg_isready, -U, app, -h, 127.0.0.1]
+              command: [pg_isready, -U, app, -d, postgres, -h, 127.0.0.1]
             timeoutSeconds: 5
             failureThreshold: 6
           resources:
