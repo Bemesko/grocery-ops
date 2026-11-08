@@ -196,7 +196,8 @@ const { categorias, recarregar: recarregarCategorias } = useCategorias()
 
 async function carregar() {
   const r = await tentar(() => $fetch<RespostaCompraAtual>('/api/compras/atual'))
-  if (r) dados.value = r
+  if (!r) return
+  dados.value = r
   carregado.value = true
 }
 

@@ -1,6 +1,7 @@
 <template>
   <NuxtPwaManifest />
   <NuxtPwaAssets />
+  <FaixaSemBanco />
   <NuxtPage :page-key="(r) => r.fullPath" />
   <NavInferior />
   <Transition name="aviso">

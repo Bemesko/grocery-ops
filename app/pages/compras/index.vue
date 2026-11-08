@@ -27,7 +27,9 @@ const compras = ref<(Compra & { itens: number })[]>([])
 const carregado = ref(false)
 
 onMounted(async () => {
-  compras.value = (await tentar(() => $fetch<(Compra & { itens: number })[]>('/api/compras?limite=200'))) ?? []
+  const r = await tentar(() => $fetch<(Compra & { itens: number })[]>('/api/compras?limite=200'))
+  if (!r) return
+  compras.value = r
   carregado.value = true
 })
 
