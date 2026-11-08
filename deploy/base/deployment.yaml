@@ -24,12 +24,16 @@ spec:
             - name: http
               containerPort: 8080
           env:
-            # Contrato com o overlay (veja kustomization.yaml). O pod espera o secret existir.
+            # Contrato com o overlay (veja kustomization.yaml). Opcional na base: sem banco, o
+            # app sobe (/healthz ok) e a API responde 503. Assim a base sozinha fica Healthy,
+            # como o e2e do repo central exige (ele sincroniza deploy/base quando não há
+            # Tailscale). Os componentes de banco tornam o secret obrigatório.
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: grocery-ops-db
                   key: DATABASE_URL
+                  optional: true
             - name: OTEL_SERVICE_NAME
               value: grocery-ops
           # Destino e ajustes da telemetria (OTEL_*), definidos pelo overlay. Sem o

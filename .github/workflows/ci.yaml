@@ -74,6 +74,14 @@ jobs:
           ./scripts/set-image.sh "${CI_IMAGE}" "${work}/deploy/base/kustomization.yaml"
           sudo k3s kubectl create namespace ci
           ./scripts/kustomize-build.sh "${work}/deploy/overlays/ci" | sudo k3s kubectl -n ci apply -f -
+          echo "WORK=${work}" >> "$GITHUB_ENV"
+
+      - name: deploy/base sozinha fica Available (como no e2e do repo central)
+        run: |
+          kubectl() { sudo k3s kubectl "$@"; }
+          kubectl create namespace ci-base
+          ./scripts/kustomize-build.sh "${WORK}/deploy/base" | kubectl -n ci-base apply -f -
+          kubectl -n ci-base wait deployment --all --for=condition=Available --timeout=300s
 
       - name: Deployments Available e /healthz
         run: |
@@ -127,6 +135,8 @@ jobs:
         if: failure()
         run: |
           sudo k3s kubectl -n ci get all -o wide || true
+          sudo k3s kubectl -n ci-base get all -o wide || true
+          sudo k3s kubectl -n ci-base logs deployment/grocery-ops --tail=50 || true
           sudo k3s kubectl -n ci describe pods || true
           sudo k3s kubectl -n ci logs deployment/grocery-ops --tail=100 || true
           sudo k3s kubectl -n ci logs deployment/grocery-ops-postgres --tail=50 || true
