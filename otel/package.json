@@ -13,6 +13,6 @@
     "@opentelemetry/resources": "3.0.0",
     "@opentelemetry/sdk-metrics": "3.0.0",
     "@opentelemetry/sdk-node": "0.300.0",
-    "import-in-the-middle": "3.5.2"
+    "import-in-the-middle": "3.5.3"
   }
 }
