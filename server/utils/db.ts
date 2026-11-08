@@ -6,12 +6,41 @@ export type Sql = postgres.Sql<Record<string, unknown>>
 let conexao: Sql | null = null
 let pronto: Promise<void> | null = null
 
+/** 503 que o front reconhece (`data.semBanco`) e mostra como faixa fixa, não como erro solto. */
+export function erroSemBanco(message = 'Banco de dados indisponível') {
+  return createError({ statusCode: 503, message, data: { semBanco: true } })
+}
+
+// Erros do driver `postgres` e do Node que significam "não deu para falar com o banco".
+const CODIGOS_SEM_BANCO = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'ETIMEDOUT',
+  'EHOSTUNREACH',
+  'CONNECT_TIMEOUT',
+  'CONNECTION_CLOSED',
+  'CONNECTION_ENDED',
+  'CONNECTION_DESTROYED',
+  '57P01', // admin_shutdown
+  '57P03', // cannot_connect_now
+])
+
+export function ehFalhaDeConexao(erro: unknown): boolean {
+  let atual = erro as { code?: string; cause?: unknown; errors?: unknown[] } | undefined
+  for (let i = 0; atual && i < 5; i++) {
+    if (atual.code && CODIGOS_SEM_BANCO.has(atual.code)) return true
+    if (atual.errors?.some(ehFalhaDeConexao)) return true
+    atual = atual.cause as typeof atual
+  }
+  return false
+}
+
 function conectar(): Sql {
   if (conexao) return conexao
   const url = process.env.DATABASE_URL
-  if (!url) {
-    throw createError({ statusCode: 503, message: 'DATABASE_URL não configurada' })
-  }
+  if (!url) throw erroSemBanco('Banco de dados não configurado')
   conexao = instrumentarSql(postgres(url, {
     max: 5,
     onnotice: () => {},
@@ -56,7 +85,7 @@ export async function useDb(): Promise<Sql> {
     await pronto
   } catch (erro) {
     log('error', 'banco indisponível', { erro: String(erro) })
-    throw createError({ statusCode: 503, message: 'Banco de dados indisponível' })
+    throw erroSemBanco()
   }
   return sql
 }

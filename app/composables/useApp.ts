@@ -20,12 +20,28 @@ export function mensagemErro(e: unknown): string {
   return dados?.message ?? (e as Error)?.message ?? 'Algo deu errado'
 }
 
-/** Executa uma ação da API mostrando o erro num aviso. Devolve undefined se falhou. */
+/** O servidor está no ar, mas sem banco: a faixa fixa do app.vue fica visível. */
+export const useSemBanco = () => useState<boolean>('sem-banco', () => false)
+
+/** 503 marcado pela API (`data.semBanco`, veja server/utils/db.ts). */
+export function ehSemBanco(e: unknown): boolean {
+  const corpo = (e as { data?: { data?: { semBanco?: boolean } } })?.data
+  return Boolean(corpo?.data?.semBanco)
+}
+
+/**
+ * Executa uma ação da API. Erro comum vira um aviso; falta de banco liga a faixa fixa
+ * (sem repetir o erro a cada ação). Devolve undefined se falhou.
+ */
 export async function tentar<T>(acao: () => Promise<T>): Promise<T | undefined> {
+  const semBanco = useSemBanco()
   try {
-    return await acao()
+    const resultado = await acao()
+    semBanco.value = false
+    return resultado
   } catch (e) {
-    avisar(mensagemErro(e), 'erro')
+    if (ehSemBanco(e)) semBanco.value = true
+    else avisar(mensagemErro(e), 'erro')
     return undefined
   }
 }

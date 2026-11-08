@@ -18,9 +18,20 @@ function marcarRota(event: H3Event) {
 export default defineNitroPlugin((nitro) => {
   nitro.hooks.hook('beforeResponse', marcarRota)
 
-  // Respostas de erro (4xx inclusive) não passam pelo beforeResponse.
+  // Respostas de erro (4xx inclusive) não passam pelo beforeResponse. O hook roda antes do
+  // error handler montar a resposta, com o mesmo objeto de erro.
   nitro.hooks.hook('error', (erro, { event }) => {
     if (event) marcarRota(event)
+    // Banco caiu no meio de uma consulta: vira o mesmo 503 de "sem banco" da subida.
+    if (ehFalhaDeConexao(erro)) {
+      Object.assign(erro, {
+        statusCode: 503,
+        statusMessage: 'Service Unavailable',
+        message: 'Banco de dados indisponível',
+        data: { semBanco: true },
+        unhandled: false,
+      })
+    }
     const status = (erro as { statusCode?: number }).statusCode ?? 500
     if (status < 500) return
     registrarErro(trace.getActiveSpan(), erro)
