@@ -3,16 +3,22 @@ import type { Categoria, ItemResumo } from '../../shared/types/api'
 export interface Aviso {
   texto: string
   tipo: 'info' | 'erro'
+  /** Botão no toast (ex.: "Desfazer"). */
+  acao?: { rotulo: string; executar: () => unknown }
 }
 
 export const useAviso = () => useState<Aviso | null>('aviso', () => null)
 
-export function avisar(texto: string, tipo: Aviso['tipo'] = 'info') {
+export function avisar(texto: string, tipo: Aviso['tipo'] = 'info', acao?: Aviso['acao']) {
   const aviso = useAviso()
-  aviso.value = { texto, tipo }
-  setTimeout(() => {
-    if (aviso.value?.texto === texto) aviso.value = null
-  }, 3500)
+  const novo: Aviso = { texto, tipo, acao }
+  aviso.value = novo
+  setTimeout(
+    () => {
+      if (aviso.value === novo) aviso.value = null
+    },
+    acao ? 5000 : 3500,
+  )
 }
 
 export function mensagemErro(e: unknown): string {

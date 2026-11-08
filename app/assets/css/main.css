@@ -13,6 +13,8 @@
   --perigo-clara: #fdecec;
   --sobe: #c53030;
   --desce: #2f855a;
+  --prioridade: #dd6b20;
+  --prioridade-clara: #feebdc;
   --raio: 0.75rem;
   --sombra: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 8px rgb(0 0 0 / 4%);
   color-scheme: light;
@@ -34,6 +36,8 @@
     --perigo-clara: #3d1f1f;
     --sobe: #fc8181;
     --desce: #68d391;
+    --prioridade: #f6ad55;
+    --prioridade-clara: #3b2614;
     color-scheme: dark;
   }
 }
@@ -235,6 +239,11 @@ label {
 
 .lista > li:first-child {
   border-top: 0;
+}
+
+/* Item prioritário: barra laranja na borda esquerda (sem mexer no layout). */
+.lista > li.prioritario {
+  box-shadow: inset 3px 0 0 var(--prioridade);
 }
 
 .selo {

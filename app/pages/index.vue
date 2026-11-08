@@ -37,49 +37,68 @@
     </div>
 
     <p v-if="carregado && !lista.length" class="vazio">Lista vazia. Anote o que acabou durante a semana.</p>
+    <p v-else-if="lista.length && !preparando" class="suave dica-arraste">
+      Arraste um item: → comprado, ← tirar da lista.
+    </p>
 
     <section v-for="grupo in grupos" :key="grupo.categoria.id">
       <h3>{{ grupo.categoria.nome }}</h3>
       <ul class="lista">
-        <li v-for="li in grupo.linhas" :key="li.id" :class="{ fora: preparando && !li.nestaIda }">
-          <input
-            v-if="preparando"
-            type="checkbox"
-            class="marca"
-            :checked="li.nestaIda"
-            :aria-label="`Levar ${li.nome} nesta ida`"
-            @change="alternar(li, 'nestaIda')"
-          />
-          <button
-            type="button"
-            class="icone estrela"
-            :class="{ ligada: li.prioritario }"
-            :aria-label="li.prioritario ? 'Tirar prioridade' : 'Marcar como prioritário'"
-            @click="alternar(li, 'prioritario')"
+        <li
+          v-for="li in grupo.linhas"
+          :key="li.id"
+          class="arrastavel"
+          :class="{ fora: preparando && !li.nestaIda, prioritario: li.prioritario }"
+        >
+          <div
+            class="fundo-arraste"
+            :class="[arraste.linha(li.id).direcao, { passou: arraste.linha(li.id).passou }]"
+            aria-hidden="true"
           >
-            {{ li.prioritario ? '★' : '☆' }}
-          </button>
-          <div class="cresce" @click="editando = editando === li.id ? null : li.id">
-            <div>
-              {{ li.nome }}
-              <span v-if="li.quantidade" class="suave">· {{ li.quantidade }}</span>
-            </div>
-            <div v-if="editando === li.id" class="edicao" @click.stop>
-              <input
-                :value="li.quantidade ?? ''"
-                placeholder="Quantidade (ex.: 2, 1 kg)"
-                @change="mudarQuantidade(li, ($event.target as HTMLInputElement).value)"
-              />
-              <div class="linha">
-                <NuxtLink :to="`/itens/${li.itemId}`" class="suave">Preços do item</NuxtLink>
-                <span class="cresce" />
-                <button type="button" class="perigo" @click="remover(li)">Tirar da lista</button>
+            <span>✓ Comprado</span>
+            <span>Tirar ✕</span>
+          </div>
+          <div class="frente" :style="arraste.linha(li.id).estilo" v-on="arraste.linha(li.id, editando === li.id).eventos">
+            <input
+              v-if="preparando"
+              type="checkbox"
+              class="marca"
+              :checked="li.nestaIda"
+              :aria-label="`Levar ${li.nome} nesta ida`"
+              @change="alternar(li, 'nestaIda')"
+            />
+            <button
+              type="button"
+              class="icone"
+              :aria-label="li.prioritario ? 'Tirar prioridade' : 'Marcar como prioritário'"
+              :aria-pressed="li.prioritario"
+              @click="alternar(li, 'prioritario')"
+            >
+              <MarcaPrioridade :ligada="li.prioritario" />
+            </button>
+            <div class="cresce" @click="editando = editando === li.id ? null : li.id">
+              <div>
+                {{ li.nome }}
+                <span v-if="li.quantidade" class="suave">· {{ li.quantidade }}</span>
+              </div>
+              <div v-if="editando === li.id" class="edicao" @click.stop>
+                <input
+                  :value="li.quantidade ?? ''"
+                  placeholder="Quantidade (ex.: 2, 1 kg)"
+                  @change="mudarQuantidade(li, ($event.target as HTMLInputElement).value)"
+                />
+                <div class="linha">
+                  <NuxtLink :to="`/itens/${li.itemId}`" class="suave">Preços do item</NuxtLink>
+                  <span class="cresce" />
+                  <button type="button" @click="marcarComprado(li)">Comprado</button>
+                  <button type="button" class="perigo" @click="remover(li)">Tirar da lista</button>
+                </div>
               </div>
             </div>
+            <span v-if="estimativaExibida(li) !== null" class="suave num">
+              ≈ {{ formatarDinheiro(estimativaExibida(li)) }}
+            </span>
           </div>
-          <span v-if="estimativaExibida(li) !== null" class="suave num">
-            ≈ {{ formatarDinheiro(estimativaExibida(li)) }}
-          </span>
         </li>
       </ul>
     </section>
@@ -233,11 +252,32 @@ async function mudarQuantidade(li: ListaItem, valor: string) {
   await carregar()
 }
 
-async function remover(li: ListaItem) {
+const arraste = useArrastar((id, direcao) => {
+  const li = lista.value.find((x) => x.id === id)
+  if (!li) return
+  return direcao === 'esquerda' ? remover(li) : marcarComprado(li)
+})
+
+// Tira a linha da tela na hora; o toast permite desfazer.
+async function resolver(li: ListaItem, acao: () => Promise<unknown>, mensagem: string) {
   editando.value = null
   dados.value!.itens = dados.value!.itens.filter((x) => x.id !== li.id)
-  await tentar(() => $fetch(`/api/lista/${li.id}`, { method: 'DELETE' }))
-  avisar(`${li.nome} saiu da lista`)
+  const ok = await tentar(acao)
+  if (!ok) return carregar()
+  avisar(mensagem, 'info', { rotulo: 'Desfazer', executar: () => reabrir(li) })
+}
+
+function remover(li: ListaItem) {
+  return resolver(li, () => $fetch(`/api/lista/${li.id}`, { method: 'DELETE' }), `${li.nome} saiu da lista`)
+}
+
+function marcarComprado(li: ListaItem) {
+  return resolver(li, () => $fetch(`/api/lista/${li.id}/comprado`, { method: 'POST' }), `${li.nome} comprado`)
+}
+
+async function reabrir(li: ListaItem) {
+  await tentar(() => $fetch(`/api/lista/${li.id}/reabrir`, { method: 'POST' }))
+  await carregar()
 }
 
 async function prepararIda() {
@@ -291,12 +331,63 @@ async function comecar(mercadoId: number, levarTudo: boolean) {
   margin-left: auto;
 }
 
-.estrela {
-  color: var(--texto-suave);
+.lista > li.arrastavel {
+  display: block;
+  position: relative;
+  padding: 0;
+  overflow: hidden;
 }
 
-.estrela.ligada {
-  color: var(--alerta);
+.frente {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  min-height: 3rem;
+  background: var(--superficie);
+  touch-action: pan-y;
+}
+
+.prioritario .frente {
+  box-shadow: inset 3px 0 0 var(--prioridade);
+}
+
+.fundo-arraste {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  color: var(--superficie);
+  font-weight: 600;
+  font-size: 0.9rem;
+  visibility: hidden;
+}
+
+.fundo-arraste.direita {
+  visibility: visible;
+  background: var(--primaria);
+}
+
+.fundo-arraste.esquerda {
+  visibility: visible;
+  background: var(--perigo);
+}
+
+.fundo-arraste.direita span:last-child,
+.fundo-arraste.esquerda span:first-child {
+  visibility: hidden;
+}
+
+.fundo-arraste:not(.passou) span {
+  opacity: 0.6;
+}
+
+.dica-arraste {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
 }
 
 .marca {

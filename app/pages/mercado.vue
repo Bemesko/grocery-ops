@@ -56,10 +56,16 @@
       <section v-for="grupo in grupos" :key="grupo.categoria.id">
         <h3>{{ grupo.categoria.nome }}</h3>
         <ul class="lista">
-          <li v-for="p in grupo.pendentes" :key="`p${p.listaItemId}`" class="pendente" @click="abrirPendente(p)">
+          <li
+            v-for="p in grupo.pendentes"
+            :key="`p${p.listaItemId}`"
+            class="pendente"
+            :class="{ prioritario: p.prioritario }"
+            @click="abrirPendente(p)"
+          >
             <span class="caixa" aria-hidden="true" />
             <span class="cresce">
-              <span v-if="p.prioritario" class="estrela">★</span>
+              <MarcaPrioridade v-if="p.prioritario" ligada pequena />
               {{ p.nome }}
               <span v-if="p.quantidade" class="suave">· {{ p.quantidade }}</span>
             </span>
@@ -436,9 +442,6 @@ async function comecar(mercadoId: number) {
   color: var(--texto-suave);
 }
 
-.estrela {
-  color: var(--alerta);
-}
 
 .mostrar {
   margin-top: 1rem;
