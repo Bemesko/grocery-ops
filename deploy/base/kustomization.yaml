@@ -25,4 +25,4 @@ resources:
 images:
   - name: app-image
     newName: ghcr.io/bemesko/grocery-ops
-    digest: sha256:a3e5d2ee0c8879af3784456b5fc6915e5a0461f4dcb79e3ccc13623b5fb0fca9
+    digest: sha256:d482a85a352a14fca3af5621e78efb177797d6f5aaafaf5751f7a793705a8770
