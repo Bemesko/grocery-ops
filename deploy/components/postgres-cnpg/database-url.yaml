@@ -13,3 +13,5 @@ spec:
                 secretKeyRef:
                   name: grocery-ops-db-app
                   key: uri
+                  # o pod espera o CNPG criar a credencial
+                  optional: false

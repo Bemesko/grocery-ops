@@ -13,7 +13,7 @@ PWA de lista de compras e acompanhamento do carrinho (`grocery-ops`), publicado 
 
 - `app/`: front Vue (`app.vue`, `pages/`, `components/`); `shared/`: código usado no front e na API
 - `server/routes/healthz.get.ts`: probes e e2e; não mude a rota nem a porta 8080 sem ajustar `deploy/` e o CI
-- `deploy/base`: só o app, sem Ingress, banco ou destino de telemetria. Contratos: Secret `grocery-ops-db` (chave `DATABASE_URL`) e ConfigMap opcional `grocery-ops-otel` (variáveis `OTEL_*`)
+- `deploy/base`: só o app, sem Ingress, banco ou destino de telemetria. Contratos: Secret `grocery-ops-db` (chave `DATABASE_URL`) e ConfigMap opcional `grocery-ops-otel` (variáveis `OTEL_*`). A base sozinha precisa ficar Healthy (o e2e do repo central a sincroniza sem Tailscale): por isso o secret é opcional nela
 - `deploy/components/postgres-cnpg`: Postgres pelo CloudNativePG, opcional; troque o componente para usar outro Postgres
 - `deploy/overlays/tailscale` (notebook, host `grocery-ops`): base + Ingress + CNPG + telemetria para o `otel-agent` do cluster
 - `deploy/overlays/ci` (só o e2e): base + Postgres simples + OTel Collector com exporter `debug`

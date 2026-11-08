@@ -3,7 +3,8 @@
 # Application. `base` é o app sem infraestrutura: sem Ingress, sem banco e sem destino de
 # telemetria. Contratos que os overlays cumprem:
 #   - Secret `grocery-ops-db`, chave DATABASE_URL (URL de um Postgres qualquer); um
-#     componente pode apontar para outro secret (components/postgres-cnpg);
+#     componente pode apontar para outro secret (components/postgres-cnpg). Sem ele, a
+#     base ainda sobe Healthy (o e2e do repo central usa a base pura), com a API em 503;
 #   - ConfigMap `grocery-ops-otel` (opcional) com variáveis OTEL_* (OTEL_EXPORTER_OTLP_ENDPOINT
 #     liga a telemetria).
 apiVersion: kustomize.config.k8s.io/v1beta1
