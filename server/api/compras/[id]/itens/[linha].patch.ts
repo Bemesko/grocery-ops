@@ -10,15 +10,20 @@ export default defineEventHandler(async (event) => {
     where id = ${linhaId} and compra_id = ${compraId}
   `
   if (!atual) erro(404, 'Item não está nesta compra')
+  const un = linha.unidade ?? (atual.unidade as string)
   const quantidade = linha.quantidade ?? (atual.quantidade as number)
+  const mudaEmbalagem = 'embalagem' in corpo || un === 'kg'
+  const embalagem = un === 'un' ? linha.embalagem : null
   const preco = linha.preco ?? (atual.precoUnitarioCentavos as number)
   await sql`
     update compra_item set
-      unidade = ${linha.unidade ?? (atual.unidade as string)},
+      unidade = ${un},
       quantidade = ${quantidade},
       preco_unitario_centavos = ${preco},
       preco_cheio_centavos = ${'precoCheio' in corpo ? linha.precoCheio : sql`preco_cheio_centavos`},
       variante = ${'variante' in corpo ? linha.variante : sql`variante`},
+      embalagem_qtd = ${mudaEmbalagem ? (embalagem?.qtd ?? null) : sql`embalagem_qtd`},
+      embalagem_unidade = ${mudaEmbalagem ? (embalagem?.unidade ?? null) : sql`embalagem_unidade`},
       total_centavos = ${totalItem(quantidade, preco)}
     where id = ${linhaId}
   `

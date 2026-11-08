@@ -1,6 +1,7 @@
 <template>
-  <span v-if="variacao" class="selo" :class="classe" :title="titulo">
-    {{ texto }}
+  <span v-if="variacao" class="selos">
+    <span class="selo" :class="classe" :title="titulo">{{ texto }}</span>
+    <SeloReduflacao :reduflacao="variacao.reduflacao" />
   </span>
 </template>
 
@@ -14,9 +15,19 @@ const classe = computed(() => (igual.value ? 'igual' : (props.variacao?.percentu
 const texto = computed(() => {
   const v = props.variacao
   if (!v) return ''
-  const sufixo = v.outroMercado ? ` vs ${v.outroMercado}` : ''
+  const sufixo = `${v.porConteudo ?? ''}${v.outroMercado ? ` vs ${v.outroMercado}` : ''}`
   if (igual.value) return `=${sufixo}`
   return `${v.percentual > 0 ? '▲' : '▼'} ${formatarPercentual(Math.abs(v.percentual))}${sufixo}`
 })
-const titulo = computed(() => (props.variacao ? `Antes: ${formatarDinheiro(props.variacao.anterior)}` : ''))
+const titulo = computed(() =>
+  props.variacao ? `Antes: ${formatarDinheiro(props.variacao.anterior)}${props.variacao.porConteudo ?? ''}` : '',
+)
 </script>
+
+<style scoped>
+.selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+</style>

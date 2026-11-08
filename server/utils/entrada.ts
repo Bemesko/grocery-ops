@@ -1,5 +1,6 @@
 // Validação mínima dos corpos de requisição, sem biblioteca.
 import type { Unidade } from '../../shared/types/api'
+import type { Embalagem } from '../../shared/utils/embalagem'
 
 export function erro(statusCode: number, message: string, data?: Record<string, unknown>): never {
   throw createError({ statusCode, message, data })
@@ -52,4 +53,25 @@ export function booleano(valor: unknown, campo: string): boolean | null {
   if (valor === undefined || valor === null) return null
   if (typeof valor !== 'boolean') erro(400, `${campo} deve ser verdadeiro ou falso`)
   return valor
+}
+
+export function listaDeIds(valor: unknown, campo: string): number[] {
+  if (!Array.isArray(valor) || !valor.length) erro(400, `${campo} deve ser uma lista de ids`)
+  const ids = valor.map((v) => Number(v))
+  if (ids.some((n) => !Number.isInteger(n) || n <= 0)) erro(400, `${campo} inválido`)
+  if (ids.length > 500) erro(400, `${campo}: no máximo 500`)
+  return [...new Set(ids)]
+}
+
+/** Embalagem `{ qtd, unidade }` (ou texto "800 g"); null/ausente = sem embalagem. */
+export function embalagemEntrada(valor: unknown): Embalagem | null {
+  if (valor === undefined || valor === null || valor === '') return null
+  if (typeof valor === 'string') return lerEmbalagem(valor) ?? erro(400, 'embalagem inválida (ex.: 800 g, 1 L, 12 un)')
+  const v = valor as { qtd?: unknown; unidade?: unknown }
+  const qtd = Number(v.qtd)
+  if (!Number.isFinite(qtd) || qtd <= 0 || Math.round(qtd * 1000) / 1000 !== qtd || qtd >= 10_000_000) {
+    erro(400, 'embalagem: quantidade inválida')
+  }
+  if (!['g', 'kg', 'ml', 'l', 'un'].includes(v.unidade as string)) erro(400, 'embalagem: unidade deve ser g, kg, ml, l ou un')
+  return { qtd, unidade: v.unidade as Embalagem['unidade'] }
 }

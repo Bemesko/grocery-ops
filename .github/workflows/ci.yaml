@@ -27,6 +27,8 @@ jobs:
           key: lint-${{ hashFiles('.pre-commit-config.yaml') }}
       - name: pre-commit (mesma config do WSL)
         run: pre-commit run --all-files --show-diff-on-failure
+      - name: Testes das regras (make unit, no Node fixado)
+        run: make unit
       - name: Placeholder trocado (scripts/init.sh)
         if: github.repository != 'bernats-homelab/repotpl-k8s-app'
         run: |

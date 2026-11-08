@@ -6,7 +6,10 @@
 
     <template v-if="d">
       <h1>{{ d.item.nome }}</h1>
-      <p class="suave">{{ d.item.categoria }} · por {{ d.item.unidade === 'kg' ? 'kg' : 'unidade' }}</p>
+      <p class="suave">
+        {{ d.item.categoria }} · por {{ d.item.unidade === 'kg' ? 'kg' : 'unidade' }}
+        <template v-if="d.item.embalagem"> · embalagem habitual {{ formatarEmbalagem(d.item.embalagem) }}</template>
+      </p>
 
       <h2>Último preço por mercado</h2>
       <p v-if="!d.ultimoPorMercado.length" class="suave">Ainda sem compras registradas.</p>
@@ -14,9 +17,15 @@
         <li v-for="u in d.ultimoPorMercado" :key="u.mercadoId">
           <span class="cresce">
             {{ u.mercado }}
-            <span class="suave">· {{ dataCurta(u.data) }}<template v-if="u.variante"> · {{ u.variante }}</template></span>
+            <span class="suave">
+              · {{ dataCurta(u.data) }}<template v-if="u.variante"> · {{ u.variante }}</template>
+              <template v-if="u.embalagem"> · {{ formatarEmbalagem(u.embalagem) }}</template>
+            </span>
           </span>
-          <strong class="num">{{ formatarDinheiro(u.precoUnitario) }}{{ u.unidade === 'kg' ? '/kg' : '' }}</strong>
+          <span class="precos">
+            <strong class="num">{{ formatarDinheiro(u.precoUnitario) }}{{ u.unidade === 'kg' ? '/kg' : '' }}</strong>
+            <span v-if="porConteudo(u)" class="suave num">{{ porConteudo(u) }}</span>
+          </span>
         </li>
       </ul>
 
@@ -26,9 +35,16 @@
           <NuxtLink :to="`/compras/${c.compraId}`" class="linha cresce link">
             <span class="cresce">
               {{ dataCurta(c.data) }} · {{ c.mercado }}
-              <span class="suave">· {{ formatarQuantidade(c.quantidade, c.unidade) }}</span>
+              <span class="suave">
+                · {{ formatarQuantidade(c.quantidade, c.unidade) }}
+                <template v-if="c.embalagem"> de {{ formatarEmbalagem(c.embalagem) }}</template>
+              </span>
+              <SeloReduflacao :reduflacao="c.reduflacao" />
             </span>
-            <span class="suave num">{{ formatarDinheiro(c.precoUnitario) }}</span>
+            <span class="precos">
+              <span class="suave num">{{ formatarDinheiro(c.precoUnitario) }}</span>
+              <span v-if="porConteudo(c)" class="suave num">{{ porConteudo(c) }}</span>
+            </span>
             <span class="num">{{ formatarDinheiro(c.total) }}</span>
           </NuxtLink>
         </li>
@@ -45,8 +61,16 @@
           <button type="button" class="chip" :class="{ ativo: unidade === 'un' }" @click="unidade = 'un'">Unidade</button>
           <button type="button" class="chip" :class="{ ativo: unidade === 'kg' }" @click="unidade = 'kg'">kg</button>
         </div>
+        <template v-if="unidade === 'un'">
+          <label for="embalagem">Embalagem habitual <span class="suave">(opcional)</span></label>
+          <input id="embalagem" v-model="embalagemTexto" placeholder="ex.: 1 kg, 900 ml, 12 un" />
+          <p class="suave dica">
+            O tamanho que a casa costuma levar. As estimativas da lista usam o preço por kg/L/un para comparar
+            mercados que vendem embalagens diferentes.
+          </p>
+        </template>
         <div class="linha acoes">
-          <button type="submit" class="primario">Salvar</button>
+          <button type="submit" class="primario" :disabled="embalagemInvalida">Salvar</button>
         </div>
       </form>
 
@@ -62,19 +86,27 @@
 
 <script setup lang="ts">
 import type { ItemResumo, Unidade } from '../../../shared/types/api'
+import type { Embalagem, Reduflacao } from '../../../shared/utils/embalagem'
+
+interface CompraDoItem {
+  compraId: number
+  mercadoId: number
+  data: string
+  mercado: string
+  quantidade: number
+  unidade: Unidade
+  precoUnitario: number
+  variante: string | null
+  embalagem: Embalagem | null
+  precoBase: number | null
+  reduflacao: Reduflacao | null
+  total: number
+}
 
 interface Detalhe {
-  item: { id: number; nome: string; categoriaId: number; unidade: Unidade; categoria: string }
-  ultimoPorMercado: { mercadoId: number; mercado: string; data: string; precoUnitario: number; unidade: Unidade; variante: string | null }[]
-  compras: {
-    compraId: number
-    data: string
-    mercado: string
-    quantidade: number
-    unidade: Unidade
-    precoUnitario: number
-    total: number
-  }[]
+  item: { id: number; nome: string; categoriaId: number; unidade: Unidade; categoria: string; embalagem: Embalagem | null }
+  ultimoPorMercado: CompraDoItem[]
+  compras: CompraDoItem[]
 }
 
 const rota = useRoute()
@@ -83,6 +115,8 @@ const d = ref<Detalhe | null>(null)
 const nome = ref('')
 const categoriaId = ref<number | null>(null)
 const unidade = ref<Unidade>('un')
+const embalagemTexto = ref('')
+const embalagemInvalida = computed(() => Boolean(embalagemTexto.value.trim()) && !lerEmbalagem(embalagemTexto.value))
 const { itens, recarregar: recarregarItens } = useItens()
 const { recarregar: recarregarCategorias } = useCategorias()
 
@@ -93,6 +127,13 @@ async function carregar() {
   nome.value = r.item.nome
   categoriaId.value = r.item.categoriaId
   unidade.value = r.item.unidade
+  embalagemTexto.value = formatarEmbalagem(r.item.embalagem)
+}
+
+/** "R$ 22,50/kg" para compras com embalagem (exceto 1 un). */
+function porConteudo(c: CompraDoItem) {
+  if (!c.embalagem || c.precoBase === null || (c.embalagem.unidade === 'un' && c.embalagem.qtd === 1)) return ''
+  return `${formatarDinheiro(c.precoBase)}${rotuloBase(baseDe(c.embalagem.unidade))}`
 }
 
 onMounted(() => {
@@ -112,7 +153,12 @@ async function salvar() {
   const ok = await tentar(() =>
     $fetch(`/api/itens/${id}`, {
       method: 'PATCH',
-      body: { nome: nome.value, categoriaId: categoriaId.value, unidade: unidade.value },
+      body: {
+        nome: nome.value,
+        categoriaId: categoriaId.value,
+        unidade: unidade.value,
+        embalagem: unidade.value === 'un' ? lerEmbalagem(embalagemTexto.value) : null,
+      },
     }),
   )
   if (!ok) return
@@ -139,6 +185,16 @@ async function juntar(destino: ItemResumo) {
 .link {
   color: inherit;
   text-decoration: none;
+}
+
+.precos {
+  display: grid;
+  justify-items: end;
+}
+
+.dica {
+  font-size: 0.8rem;
+  margin: 0.25rem 0 0;
 }
 
 .acoes {

@@ -53,3 +53,35 @@ export function buscarItens<T extends { nome: string; usos?: number }>(
     .slice(0, limite)
     .map((r) => r.item)
 }
+
+const LIGACOES = new Set(['de', 'da', 'do', 'das', 'dos', 'com', 'e'])
+const semLigacoes = (nome: string) =>
+  nome
+    .split(' ')
+    .filter((p) => !LIGACOES.has(p))
+    .join(' ')
+
+/**
+ * Pares de itens com nomes muito parecidos ("Pão de forma" × "Pao forma", "Tomate" ×
+ * "Tomates"), candidatos a juntar. Ordenados do mais parecido para o menos.
+ */
+export function possiveisDuplicados<T extends { id: number; nome: string }>(
+  itens: T[],
+  minimo = 0.75,
+): { a: T; b: T; similaridade: number }[] {
+  const nomes = itens.map((i) => {
+    const n = normalizarNome(i.nome)
+    return { item: i, n, curto: semLigacoes(n) }
+  })
+  const pares: { a: T; b: T; similaridade: number }[] = []
+  for (let i = 0; i < nomes.length; i++) {
+    for (let j = i + 1; j < nomes.length; j++) {
+      const x = nomes[i]!
+      const y = nomes[j]!
+      if (Math.abs(x.n.length - y.n.length) > 4) continue
+      const sim = Math.max(similaridade(x.n, y.n), similaridade(x.curto, y.curto))
+      if (sim >= minimo && Math.min(x.n.length, y.n.length) >= 3) pares.push({ a: x.item, b: y.item, similaridade: sim })
+    }
+  }
+  return pares.sort((p, q) => q.similaridade - p.similaridade)
+}

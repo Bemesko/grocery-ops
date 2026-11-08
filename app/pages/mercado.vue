@@ -56,10 +56,16 @@
       <section v-for="grupo in grupos" :key="grupo.categoria.id">
         <h3>{{ grupo.categoria.nome }}</h3>
         <ul class="lista">
-          <li v-for="p in grupo.pendentes" :key="`p${p.listaItemId}`" class="pendente" @click="abrirPendente(p)">
+          <li
+            v-for="p in grupo.pendentes"
+            :key="`p${p.listaItemId}`"
+            class="pendente"
+            :class="{ prioritario: p.prioritario }"
+            @click="abrirPendente(p)"
+          >
             <span class="caixa" aria-hidden="true" />
             <span class="cresce">
-              <span v-if="p.prioritario" class="estrela">★</span>
+              <MarcaPrioridade v-if="p.prioritario" ligada pequena />
               {{ p.nome }}
               <span v-if="p.quantidade" class="suave">· {{ p.quantidade }}</span>
             </span>
@@ -72,12 +78,12 @@
             <span class="cresce">
               {{ c.nome }}
               <span class="suave">
-                · {{ formatarQuantidade(c.quantidade, c.unidade) }}
+                · {{ formatarQuantidade(c.quantidade, c.unidade) }}<template v-if="c.embalagem"> de {{ formatarEmbalagem(c.embalagem) }}</template>
                 <template v-if="c.variante"> · {{ c.variante }}</template>
               </span>
               <span v-if="c.daLista === false" class="selo neutro">fora da lista</span>
+              <SeloVariacao :variacao="c.variacao" class="selos-linha" />
             </span>
-            <SeloVariacao :variacao="c.variacao" />
             <span class="num">{{ formatarDinheiro(c.total) }}</span>
           </li>
         </ul>
@@ -129,6 +135,7 @@
       :referencia="folha.referencia"
       :inicial="folha.inicial"
       :precisa-categoria="folha.precisaCategoria"
+      :embalagem-habitual="folha.embalagemHabitual"
       @fechar="folha = null"
       @salvar="salvarLinha"
       @remover="removerLinha"
@@ -168,6 +175,7 @@ import type {
   RespostaCompraAtual,
   Unidade,
 } from '../../shared/types/api'
+import type { Embalagem } from '../../shared/utils/embalagem'
 
 interface Folha {
   chave: string
@@ -177,6 +185,7 @@ interface Folha {
   referencia: PrecoReferencia | null
   inicial: Omit<DadosLinha, 'categoriaId'> | null
   precisaCategoria: boolean
+  embalagemHabitual: Embalagem | null
   /** Para onde salvar: item existente, nome novo ou linha já no carrinho. */
   itemId?: number
   nome?: string
@@ -265,6 +274,7 @@ function abrirPendente(p: PendenteMercado) {
     referencia: ref,
     inicial: null,
     precisaCategoria: false,
+    embalagemHabitual: item?.embalagem ?? null,
     itemId: p.itemId,
   }
 }
@@ -275,14 +285,17 @@ function abrirLinha(c: CompraItem) {
     titulo: c.nome,
     unidade: c.unidade,
     quantidade: c.quantidade,
-    referencia: c.variacao && !c.variacao.outroMercado ? { preco: c.variacao.anterior, quantidade: 0, variante: null, data: '' } : null,
+    // A compra em andamento não está finalizada: o último preço do item aqui é o da compra anterior.
+    referencia: referenciaDe(c.itemId),
     inicial: {
       unidade: c.unidade,
       quantidade: c.quantidade,
       precoUnitario: c.precoUnitario,
       precoCheio: c.precoCheio,
       variante: c.variante,
+      embalagem: c.embalagem,
     },
+    embalagemHabitual: itens.value.find((i) => i.id === c.itemId)?.embalagem ?? null,
     precisaCategoria: false,
     linhaId: c.id,
   }
@@ -299,6 +312,7 @@ function escolherExistente(item: ItemResumo) {
     referencia: ref,
     inicial: null,
     precisaCategoria: false,
+    embalagemHabitual: item.embalagem,
     itemId: item.id,
   }
 }
@@ -313,6 +327,7 @@ function escolherNovo(nome: string) {
     referencia: null,
     inicial: null,
     precisaCategoria: true,
+    embalagemHabitual: null,
     nome,
   }
 }
@@ -326,6 +341,7 @@ async function salvarLinha(d: DadosLinha) {
     precoUnitario: d.precoUnitario,
     precoCheio: d.precoCheio,
     variante: d.variante,
+    embalagem: d.embalagem,
   }
   const base = `/api/compras/${compra.value.id}/itens`
   const ok = f.linhaId
@@ -436,8 +452,8 @@ async function comecar(mercadoId: number) {
   color: var(--texto-suave);
 }
 
-.estrela {
-  color: var(--alerta);
+.selos-linha {
+  margin-top: 0.2rem;
 }
 
 .mostrar {

@@ -53,6 +53,20 @@
         </div>
       </div>
 
+      <div v-if="un === 'un'" class="embalagem">
+        <label for="embalagem">
+          Embalagem <span class="suave">(opcional{{ embalagemOrigem ? ` · ${embalagemOrigem}` : '' }})</span>
+        </label>
+        <input
+          id="embalagem"
+          v-model="embalagemTexto"
+          placeholder="ex.: 800 g, 1 L, 12 un"
+          autocomplete="off"
+          :aria-invalid="embalagemInvalida"
+        />
+        <p v-if="embalagemInvalida" class="erro-campo">Não entendi: use um número e g, kg, ml, L ou un.</p>
+      </div>
+
       <details :open="Boolean(inicial?.variante || inicial?.precoCheio)">
         <summary class="suave">Marca e promoção</summary>
         <label for="variante">Marca / variante</label>
@@ -63,7 +77,9 @@
 
       <p class="total">
         Total <strong class="num">{{ total === null ? '—' : formatarDinheiro(total) }}</strong>
+        <span v-if="porConteudo" class="suave num">{{ porConteudo }}</span>
         <span v-if="variacaoTexto" class="selo" :class="variacaoClasse">{{ variacaoTexto }}</span>
+        <SeloReduflacao :reduflacao="reduflacao" />
       </p>
 
       <div class="acoes">
@@ -87,6 +103,7 @@
 
 <script setup lang="ts">
 import type { DadosLinha, PrecoReferencia, Unidade } from '../../shared/types/api'
+import type { Embalagem } from '../../shared/utils/embalagem'
 
 const props = defineProps<{
   titulo: string
@@ -98,6 +115,8 @@ const props = defineProps<{
   /** Linha existente, ao corrigir. */
   inicial?: Omit<DadosLinha, 'categoriaId'> | null
   precisaCategoria?: boolean
+  /** Embalagem habitual do item: sugestão quando não há compra anterior com embalagem. */
+  embalagemHabitual?: Embalagem | null
 }>()
 const emit = defineEmits<{ salvar: [dados: DadosLinha]; remover: []; fechar: [] }>()
 
@@ -109,6 +128,21 @@ const pesoTexto = ref(un.value === 'kg' && qtdInicial ? String(qtdInicial).repla
 const precoTexto = ref(dinheiroParaCampo(props.inicial?.precoUnitario))
 const precoCheioTexto = ref(dinheiroParaCampo(props.inicial?.precoCheio))
 const variante = ref(props.inicial?.variante ?? '')
+
+// Embalagem: a da linha (ao corrigir), senão a da última compra aqui, senão a habitual.
+const embalagemSugerida = props.inicial
+  ? (props.inicial.embalagem ?? null)
+  : (props.referencia?.embalagem ?? props.embalagemHabitual ?? null)
+const embalagemOrigem = props.inicial
+  ? ''
+  : props.referencia?.embalagem
+    ? 'a da última vez aqui'
+    : props.embalagemHabitual
+      ? 'a habitual'
+      : ''
+const embalagemTexto = ref(formatarEmbalagem(embalagemSugerida))
+const embalagem = computed(() => (un.value === 'un' ? lerEmbalagem(embalagemTexto.value) : null))
+const embalagemInvalida = computed(() => un.value === 'un' && Boolean(embalagemTexto.value.trim()) && !embalagem.value)
 const categoriaId = ref<number | null>(null)
 const campoPreco = ref<HTMLInputElement>()
 
@@ -119,19 +153,45 @@ const total = computed(() =>
 )
 const categoriaOk = computed(() => !props.precisaCategoria || categoriaId.value !== null)
 const valido = computed(
-  () => Boolean(quantidadeAtual.value && quantidadeAtual.value > 0) && preco.value !== null && categoriaOk.value,
+  () =>
+    Boolean(quantidadeAtual.value && quantidadeAtual.value > 0) &&
+    preco.value !== null &&
+    categoriaOk.value &&
+    !embalagemInvalida.value,
 )
-const podeSalvarMesmoPreco = computed(() => Boolean(quantidadeAtual.value && quantidadeAtual.value > 0) && categoriaOk.value)
+const podeSalvarMesmoPreco = computed(
+  () => Boolean(quantidadeAtual.value && quantidadeAtual.value > 0) && categoriaOk.value && !embalagemInvalida.value,
+)
 
-const variacao = computed(() => {
-  if (!props.referencia || preco.value === null || !props.referencia.preco || unidadeRef !== un.value) return null
-  return (preco.value - props.referencia.preco) / props.referencia.preco
+/** "R$ 22,50/kg" quando a embalagem é conhecida (exceto unidades de 1 un). */
+const porConteudo = computed(() => {
+  const e = embalagem.value
+  if (!e || preco.value === null || (e.unidade === 'un' && e.qtd === 1)) return ''
+  return `${formatarDinheiro(precoBase(preco.value, e))}${rotuloBase(baseDe(e.unidade))}`
 })
+const reduflacao = computed(() =>
+  props.referencia && preco.value !== null && unidadeRef === un.value
+    ? detectarReduflacao(props.referencia, { preco: preco.value, embalagem: embalagem.value })
+    : null,
+)
+
+// Embalagens de tamanhos diferentes: compara o preço por kg/L/un.
+const comparacao = computed(() => {
+  const ref = props.referencia
+  if (!ref || preco.value === null || !ref.preco || unidadeRef !== un.value) return null
+  const e = embalagem.value
+  if (e && ref.embalagem && mesmaBase(e, ref.embalagem) && !mesmoConteudo(e, ref.embalagem)) {
+    const antes = precoBase(ref.preco, ref.embalagem)
+    return { v: (precoBase(preco.value, e) - antes) / antes, sufixo: rotuloBase(baseDe(e.unidade)) }
+  }
+  return { v: (preco.value - ref.preco) / ref.preco, sufixo: '' }
+})
+const variacao = computed(() => comparacao.value?.v ?? null)
 const variacaoTexto = computed(() => {
-  const v = variacao.value
-  if (v === null) return ''
-  if (Math.abs(v) < 0.01) return '= preço'
-  return `${v > 0 ? '▲' : '▼'} ${formatarPercentual(Math.abs(v))}`
+  const c = comparacao.value
+  if (!c) return ''
+  if (Math.abs(c.v) < 0.01) return c.sufixo ? `= preço${c.sufixo}` : '= preço'
+  return `${c.v > 0 ? '▲' : '▼'} ${formatarPercentual(Math.abs(c.v))}${c.sufixo}`
 })
 const variacaoClasse = computed(() => {
   const v = variacao.value ?? 0
@@ -152,6 +212,7 @@ function salvar(precoForcado?: number) {
     precoUnitario: precoFinal,
     precoCheio: parseDinheiro(precoCheioTexto.value),
     variante: variante.value.trim() || null,
+    embalagem: embalagem.value,
     categoriaId: categoriaId.value,
   })
 }
@@ -210,7 +271,18 @@ summary {
   padding: 0.25rem 0;
 }
 
+.embalagem {
+  margin-top: 0.75rem;
+}
+
+.erro-campo {
+  color: var(--perigo);
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+}
+
 .total {
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   gap: 0.5rem;

@@ -1,5 +1,6 @@
 // Importação de histórico por CSV (docs/produto-v1.md, "Importação de histórico").
 import type { Unidade } from '../../shared/types/api'
+import type { Embalagem } from '../../shared/utils/embalagem'
 import type { Sql } from './db'
 
 const OBRIGATORIAS = ['data', 'mercado', 'item', 'categoria', 'unidade', 'quantidade', 'preco_unitario'] as const
@@ -14,6 +15,7 @@ export interface LinhaImportada {
   quantidade: number
   preco: number
   variante: string | null
+  embalagem: Embalagem | null
   precoCheio: number | null
   daLista: boolean | null
   totalNota: number | null
@@ -75,6 +77,8 @@ export async function analisarCsv(sql: Sql, conteudo: string): Promise<PreviaImp
     if (preco === null || preco < 0) problemas.push('preco_unitario inválido')
     const precoCheio = v('preco_cheio') ? parseDinheiro(v('preco_cheio')) : null
     if (v('preco_cheio') && precoCheio === null) problemas.push('preco_cheio inválido')
+    const embalagem = v('embalagem') ? lerEmbalagem(v('embalagem')) : null
+    if (v('embalagem') && !embalagem) problemas.push('embalagem inválida (ex.: 800 g, 1 L, 12 un)')
     const totalNota = v('total_nota') ? parseDinheiro(v('total_nota')) : null
     if (v('total_nota') && totalNota === null) problemas.push('total_nota inválido')
     const daLista = simNao(v('da_lista'))
@@ -95,6 +99,7 @@ export async function analisarCsv(sql: Sql, conteudo: string): Promise<PreviaImp
       quantidade: Math.round(quantidade! * 1000) / 1000,
       preco: preco!,
       variante: v('variante') || null,
+      embalagem: unidade === 'kg' ? null : embalagem,
       precoCheio,
       daLista: daLista ?? null,
       totalNota,
@@ -171,10 +176,18 @@ export async function gravarImportacao(sql: Sql, arquivo: string, previa: Previa
       }
       await tx`
         insert into compra_item (compra_id, item_id, variante, unidade, quantidade, preco_unitario_centavos,
-          preco_cheio_centavos, da_lista, total_centavos)
+          preco_cheio_centavos, da_lista, total_centavos, embalagem_qtd, embalagem_unidade)
         values (${compraId}, ${itemId}, ${l.variante}, ${l.unidade}, ${l.quantidade}, ${l.preco},
-          ${l.precoCheio}, ${l.daLista}, ${totalItem(l.quantidade, l.preco)})
+          ${l.precoCheio}, ${l.daLista}, ${totalItem(l.quantidade, l.preco)},
+          ${l.embalagem?.qtd ?? null}, ${l.embalagem?.unidade ?? null})
       `
+      // Como no mercado: a primeira embalagem conhecida vira a habitual do item.
+      if (l.embalagem) {
+        await tx`
+          update item set embalagem_qtd = ${l.embalagem.qtd}, embalagem_unidade = ${l.embalagem.unidade}
+          where id = ${itemId} and embalagem_qtd is null
+        `
+      }
     }
     return importacaoId
   })
