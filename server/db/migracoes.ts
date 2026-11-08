@@ -99,4 +99,27 @@ export const migracoes: { id: string; sql: string }[] = [
         ('Outros', 12);
     `,
   },
+  {
+    // Dia preferencial de ir ao mercado (budget semanal) e tamanho da embalagem
+    // (comparação por kg/L e reduflação).
+    id: '002_dia_preferido_e_embalagem',
+    sql: /* sql */ `
+      create table configuracao (
+        chave text primary key,
+        valor jsonb not null
+      );
+      insert into configuracao (chave, valor) values ('dia_preferido', '4');
+
+      alter table item
+        add column embalagem_qtd numeric(10, 3) check (embalagem_qtd > 0),
+        add column embalagem_unidade text check (embalagem_unidade in ('g', 'kg', 'ml', 'l', 'un')),
+        add constraint item_embalagem_completa check ((embalagem_qtd is null) = (embalagem_unidade is null));
+
+      alter table compra_item
+        add column embalagem_qtd numeric(10, 3) check (embalagem_qtd > 0),
+        add column embalagem_unidade text check (embalagem_unidade in ('g', 'kg', 'ml', 'l', 'un')),
+        add constraint compra_item_embalagem_completa
+          check ((embalagem_qtd is null) = (embalagem_unidade is null));
+    `,
+  },
 ]

@@ -15,7 +15,7 @@ DB_CONTAINER := grocery-ops-db
 DB_URL := postgres://app:app@host.docker.internal:5432/app
 DB_ENV := --add-host=host.docker.internal:host-gateway -e DATABASE_URL=$(DB_URL)
 
-.PHONY: help deps lint validate test install dev build run db db-stop
+.PHONY: help deps lint validate unit test install dev build run db db-stop
 
 help: ## Lista os targets
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -29,7 +29,10 @@ lint: ## Todos os hooks do pre-commit em todos os arquivos
 validate: ## kubeconform + kube-linter em deploy/ (base e overlays)
 	./scripts/validate-manifests.sh
 
-test: lint ## Tudo que roda sem cluster (o lint já inclui o validate)
+unit: ## Testes das regras (budget, embalagem) com node --test, sem dependências
+	$(NODE_RUN) $(NODE_IMAGE) node --test 'tests/*.test.ts'
+
+test: lint unit ## Tudo que roda sem cluster (o lint já inclui o validate)
 
 install: ## npm ci no container Node fixado
 	$(NODE_RUN) $(NODE_IMAGE) npm ci

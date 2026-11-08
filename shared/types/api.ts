@@ -142,3 +142,8 @@ export interface Gastos {
   /** Só compras em que se sabe se o item estava na lista. */
   foraDaLista: { total: number; conhecido: number }
 }
+
+export interface Configuracao {
+  /** 0 = segunda … 6 = domingo. */
+  diaPreferido: number
+}

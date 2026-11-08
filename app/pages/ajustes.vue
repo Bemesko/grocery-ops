@@ -13,19 +13,27 @@
           </div>
           <div class="linha suave">
             <span class="cresce">
-              Budget de {{ diaCurto(saldo.budget.inicio) }} a {{ diaCurto(saldo.budget.fim) }}
-              ({{ saldo.budget.dias }} {{ saldo.budget.dias === 1 ? 'dia' : 'dias' }})
+              Semana de {{ diaCurto(saldo.budget.semana) }} · compras de {{ diaCurto(saldo.budget.inicio) }} a
+              {{ diaCurto(saldo.budget.fim) }}
             </span>
             <span class="num">{{ formatarDinheiro(projecao.budget) }}</span>
           </div>
           <div class="linha suave">
-            <span class="cresce">Gasto no período</span>
+            <span class="cresce">Gasto na semana</span>
             <span class="num">{{ formatarDinheiro(saldo.budget.gastoPeriodo) }}</span>
           </div>
+          <div v-if="projecao.proximasSemanas !== null" class="linha suave">
+            <span class="cresce">
+              {{ projecao.semanasDepois === 1 ? 'Semana seguinte' : `Próximas ${projecao.semanasDepois} semanas` }}
+              (até a recarga)
+            </span>
+            <span class="num">{{ formatarDinheiro(projecao.proximasSemanas) }}{{ projecao.semanasDepois > 1 ? ' cada' : '' }}</span>
+          </div>
+          <p v-else class="suave">Última semana do ciclo: o que sobrar passa para o próximo mês.</p>
         </template>
         <p v-else class="suave">
-          Informe o saldo somado dos VRs. O budget da semana é o saldo dividido pelos dias até o dia 1,
-          vezes os dias da semana.
+          Informe o saldo somado dos VRs. O budget da semana é o saldo dividido pelas semanas que faltam até a
+          recarga do dia 1.
         </p>
         <form class="linha ajuste" @submit.prevent="ajustarSaldo">
           <input v-model="saldoTexto" class="cresce" inputmode="decimal" placeholder="Saldo de hoje (R$)" />
@@ -34,6 +42,14 @@
         <p class="suave dica">
           Ajuste quando quiser (depois da recarga, ou ao conferir o app do VR): os budgets são recalculados
           na hora, e o que a semana já gastou continua contando nela.
+        </p>
+        <label for="dia-preferido">Dia de ir ao mercado</label>
+        <select id="dia-preferido" :value="diaPreferidoAtual" @change="mudarDiaPreferido(($event.target as HTMLSelectElement).value)">
+          <option v-for="(nome, i) in NOMES_DIAS" :key="nome" :value="i">{{ nome }}</option>
+        </select>
+        <p class="suave dica">
+          Compras de segunda e terça contam para a semana corrente; de quarta a domingo, para a seguinte. Cada
+          semana sai do saldo do mês em que cai o dia de ir ao mercado.
         </p>
         <details v-if="saldo?.ajustes.length">
           <summary class="suave">Ajustes anteriores</summary>
@@ -94,16 +110,8 @@
     <!-- Itens -->
     <section id="itens">
       <h2>Itens</h2>
-      <p class="suave">Renomear, mudar categoria ou juntar duplicados.</p>
-      <input v-model="filtroItens" placeholder="Buscar item" />
-      <ul v-if="itensFiltrados.length" class="lista resultado">
-        <li v-for="i in itensFiltrados" :key="i.id">
-          <NuxtLink :to="`/itens/${i.id}`" class="linha cresce link">
-            <span class="cresce">{{ i.nome }}</span>
-            <span class="suave">{{ nomeCategoria.get(i.categoriaId) }}</span>
-          </NuxtLink>
-        </li>
-      </ul>
+      <p class="suave">Mudar categorias em lote, juntar duplicados e ajustar embalagens.</p>
+      <NuxtLink to="/itens" class="botao">Gerenciar itens ({{ itens.length }})</NuxtLink>
     </section>
 
     <!-- Importação -->
@@ -162,7 +170,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Categoria, Mercado } from '../../shared/types/api'
+import type { Categoria, Configuracao, Mercado } from '../../shared/types/api'
 import type { BaseBudget } from '../../shared/utils/budget'
 
 interface Saldo {
@@ -190,17 +198,16 @@ const mercados = ref<Mercado[]>([])
 const novoMercado = ref('')
 const novoTipo = ref<'varejo' | 'atacado'>('varejo')
 const novaCategoria = ref('')
-const filtroItens = ref('')
 const arquivo = ref('')
 const conteudo = ref('')
 const previa = ref<Previa | null>(null)
 const importacoes = ref<Importacao[]>([])
 const versao = ref('…')
-const { categorias, recarregar: recarregarCategorias, nome: nomeCategoria } = useCategorias()
+const { categorias, recarregar: recarregarCategorias } = useCategorias()
 const { itens, recarregar: recarregarItens } = useItens()
 
 const projecao = computed(() => (saldo.value?.budget.configurado ? projetarBudget(saldo.value.budget) : null))
-const itensFiltrados = computed(() => (filtroItens.value ? buscarItens(itens.value, filtroItens.value, 10) : []))
+const diaPreferidoAtual = ref(DIA_PREFERIDO_PADRAO)
 
 async function carregarSaldo() {
   saldo.value = (await tentar(() => $fetch<Saldo>('/api/saldo'))) ?? null
@@ -214,6 +221,9 @@ async function carregarImportacoes() {
 
 onMounted(() => {
   carregarSaldo()
+  tentar(() => $fetch<Configuracao>('/api/configuracao')).then((c) => {
+    if (c) diaPreferidoAtual.value = c.diaPreferido
+  })
   carregarMercados()
   carregarImportacoes()
   recarregarCategorias().catch(() => {})
@@ -233,6 +243,14 @@ async function ajustarSaldo() {
   if (!ok) return
   saldoTexto.value = ''
   avisar('Saldo ajustado')
+  await carregarSaldo()
+}
+
+async function mudarDiaPreferido(valor: string) {
+  const ok = await tentar(() => $fetch('/api/configuracao', { method: 'PUT', body: { diaPreferido: Number(valor) } }))
+  if (!ok) return
+  diaPreferidoAtual.value = Number(valor)
+  avisar('Dia de ir ao mercado salvo')
   await carregarSaldo()
 }
 
