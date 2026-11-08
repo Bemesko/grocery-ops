@@ -2,7 +2,10 @@
   <main class="pagina">
     <header class="cabecalho">
       <h1>Compras</h1>
-      <NuxtLink to="/gastos" class="suave">Gastos do mês →</NuxtLink>
+      <div class="cabecalho-acoes">
+        <NuxtLink to="/gastos" class="suave">Gastos do mês →</NuxtLink>
+        <OlhoValores />
+      </div>
     </header>
     <p v-if="carregado && !compras.length" class="vazio">Nenhuma compra finalizada ainda.</p>
     <ul v-else class="lista">

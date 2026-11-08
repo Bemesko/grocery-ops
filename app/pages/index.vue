@@ -2,12 +2,15 @@
   <main class="pagina">
     <header class="cabecalho">
       <h1>Lista</h1>
-      <NuxtLink v-if="projecao" to="/ajustes#saldo" class="budget num" :class="corRestante">
-        Semana: {{ formatarDinheiro(projecao.restante) }}
-      </NuxtLink>
-      <NuxtLink v-else-if="dados && !dados.budget.configurado" to="/ajustes#saldo" class="suave">
-        Informar saldo do VR
-      </NuxtLink>
+      <div class="cabecalho-acoes">
+        <NuxtLink v-if="projecao" to="/ajustes#saldo" class="budget num" :class="corRestante">
+          Semana: {{ formatarDinheiro(projecao.restante) }}
+        </NuxtLink>
+        <NuxtLink v-else-if="dados && !dados.budget.configurado" to="/ajustes#saldo" class="suave">
+          Informar saldo do VR
+        </NuxtLink>
+        <OlhoValores />
+      </div>
     </header>
 
     <NuxtLink v-if="dados?.compraAtual" to="/mercado" class="aviso info em-andamento">

@@ -1,6 +1,9 @@
 <template>
   <main class="pagina">
-    <header class="cabecalho"><h1>Ajustes</h1></header>
+    <header class="cabecalho">
+      <h1>Ajustes</h1>
+      <OlhoValores />
+    </header>
 
     <!-- Saldo do VR -->
     <section id="saldo">
