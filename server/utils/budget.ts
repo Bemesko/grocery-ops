@@ -2,6 +2,22 @@ import type { BaseBudget } from '../../shared/utils/budget'
 import type { Sql } from './db'
 
 /**
+ * Semanas do ciclo, com a semana da ida atrasada quando houve compra (finalizada ou em
+ * andamento) entre o dia 1 e o início da primeira janela do mês.
+ */
+export async function semanasComAtraso(sql: Sql, mes: string) {
+  const p = await diaPreferido(sql)
+  const cabeca = diasDaIdaAtrasada(mes, p)
+  if (!cabeca) return semanasDoCiclo(mes, p)
+  const [compra] = await sql`
+    select 1 from compra
+    where status in ('finalizada', 'em_andamento') and data between ${cabeca.inicio} and ${cabeca.fim}
+    limit 1
+  `
+  return semanasDoCiclo(mes, p, Boolean(compra))
+}
+
+/**
  * Saldo e semana de budget de hoje (docs/produto-v1.md, "Budget").
  *
  * O ajuste de saldo pode ser feito em qualquer dia: ele só corrige o saldo. O gasto da
@@ -10,7 +26,7 @@ import type { Sql } from './db'
  * `saldo atual + gasto da semana`, e o ajuste não devolve à semana o que ela já gastou.
  */
 export async function baseBudget(sql: Sql, hoje = hojeSP()): Promise<BaseBudget> {
-  const semanas = semanasDoCiclo(hoje.slice(0, 7), await diaPreferido(sql))
+  const semanas = await semanasComAtraso(sql, hoje.slice(0, 7))
   const i = semanas.findIndex((s) => s.inicio <= hoje && hoje <= s.fim)
   const s = semanas[i]!
   const semana = {
@@ -56,7 +72,7 @@ export async function baseBudget(sql: Sql, hoje = hojeSP()): Promise<BaseBudget>
  * feito dentro do mês (normalmente a recarga do dia 1); sem ajuste no mês, só o gasto.
  */
 export async function semanasDoMes(sql: Sql, mes: string, hoje = hojeSP()) {
-  const semanas = semanasDoCiclo(mes, await diaPreferido(sql))
+  const semanas = await semanasComAtraso(sql, mes)
   const inicio = `${mes}-01`
   const fim = ultimoDiaDoMes(inicio)
   const porDia = await sql`

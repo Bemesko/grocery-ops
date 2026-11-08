@@ -110,7 +110,8 @@ Datas e semanas em `America/Sao_Paulo` (o container roda em UTC).
 - **Ciclo**: do dia 1 ao último dia do mês (o VR recarrega no dia 1).
 - **Semana**: de segunda a domingo. Uma compra feita na segunda ou na terça conta para a semana corrente; de quarta a domingo, para a semana seguinte. As compras da semana W são, então, as feitas de quarta (W − 5) a terça (W + 1).
 - **Dia preferencial** `P` (configurável, padrão sexta): o dia em que a casa costuma ir ao mercado. A semana pertence ao ciclo do mês em que cai o dia `P` da sua janela de compras.
-- **Dinheiro do mês da compra**: se a semana de uma compra é de outro ciclo (ex.: compra na terça dia 1, cuja semana teve a ida na sexta anterior, ainda no mês passado), a compra vai para a primeira semana do próprio mês; no fim do mês, para a última.
+- **Dinheiro do mês da compra**: se a semana de uma compra é de outro ciclo, a compra conta no próprio mês (o dinheiro é o dele). No fim do mês, vai para a última semana do ciclo.
+- **Ida atrasada**: os dias do começo do mês cuja semana teve a ida no mês anterior (ex.: nov/2026 com sexta, de domingo 1/11 a terça 3/11, semana de 2/11 com ida em 30/10). Se há compra (finalizada ou em andamento) nesses dias, a ida do mês anterior atrasou: esses dias viram uma **semana a mais** no início do ciclo, com budget próprio (novembro passa de 4 para 5 semanas). Sem compra neles, não existe essa semana e os dias entram na primeira semana do mês.
 - **Saldo atual** `S` = último ajuste − compras finalizadas depois dele.
 - `G` = todas as compras finalizadas da semana atual, inclusive as feitas antes do último ajuste.
 - `S0 = S + G`: o saldo no início da semana. O saldo pode ser ajustado em qualquer dia e os budgets são recalculados na hora; como `G` continua contando o que a semana já gastou, o ajuste não devolve esse dinheiro à semana atual.
@@ -120,7 +121,7 @@ Datas e semanas em `America/Sao_Paulo` (o container roda em UTC).
 - **Transbordo**: se `G + carrinho > B` e `N > 1`, as próximas semanas ficam com `(S0 − G − carrinho) / (N − 1)`. Na última semana do ciclo, mostrar quanto do saldo passa para o próximo ciclo. Se `carrinho > S`, avisar que falta saldo no VR.
 - **Semana a semana (Gastos)**: com `Sf` = saldo depois do que o ciclo já gastou (último ajuste do mês − compras finalizadas depois dele), o budget da semana i é `(Sf + gasto da semana i em diante) / (semanas de i até o fim)`. As semanas futuras dividem `Sf` igualmente; enquanto a semana atual não tem compra, o budget dela fica reservado.
 
-Exemplo (novembro/2026, sexta): as idas são nos dias 6, 13, 20 e 27; a de sexta 27 vale para a semana de 30/11 e sai do saldo de novembro; uma compra no domingo dia 1 vai para a semana de 9/11. No domingo dia 8, com R$ 660 de saldo depois da ida de sexta 6, as próximas 3 semanas ficam com `660 / 3 = R$ 220` cada.
+Exemplo (novembro/2026, sexta): as idas são nos dias 6, 13, 20 e 27; a de sexta 27 vale para a semana de 30/11 e sai do saldo de novembro; uma compra no domingo dia 1 é uma ida atrasada (a de 30/10): vira a semana de 2/11 e novembro fica com 5 semanas. No domingo dia 8, com R$ 660 de saldo depois da ida de sexta 6, as próximas 3 semanas ficam com `660 / 3 = R$ 220` cada.
 
 ### Estimativas
 

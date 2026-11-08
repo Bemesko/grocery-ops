@@ -62,6 +62,8 @@ export interface SemanaEvolucao {
   inicio: string
   fim: string
   diaPreferido: string
+  /** Semana da ida atrasada do mês anterior (compra entre o dia 1 e a primeira janela). */
+  atrasada?: boolean
   /** Budget da semana pelo saldo do ciclo; null se o ciclo não tem ajuste de saldo. */
   budget: number | null
   gasto: number
@@ -75,7 +77,7 @@ export interface SemanaEvolucao {
  * pelos ajustes, e a semana atual bate com o cabeçalho da lista.
  */
 export function evolucaoSemanas(
-  semanas: { segunda: string; inicio: string; fim: string; diaPreferido: string }[],
+  semanas: { segunda: string; inicio: string; fim: string; diaPreferido: string; atrasada?: boolean }[],
   gastoPorSemana: Map<string, number>,
   saldoFim: number | null,
   hoje: string,
