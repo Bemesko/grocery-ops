@@ -185,6 +185,10 @@ Linhas com o mesmo `data` + `mercado` (+ `compra`) formam uma compra. Fluxo: env
 
 - **v1.1**: NFC-e de SC. Primeiro um spike: confirmar que a página de consulta da SEFAZ-SC (a URL do QR code) pode ser lida pelo servidor, sem captcha. Depois: ler o QR com a câmera (o PWA precisa de HTTPS, que o ingress do Tailscale fornece), guardar a chave e conferir o total.
 - **v2**: importar os itens da NFC-e e casar com os itens do app (as descrições da nota são abreviadas); ordem de corredores por mercado; assistente "encaixar no budget"; tamanho da embalagem para comparação exata; evolução de preço e inflação da cesta.
+- **Gastos, ideias anotadas em 2026-11-07** (sem prioridade definida):
+  - visão acumulada do trimestre, além da mensal;
+  - tocar no nome de uma categoria em "Por categoria" mostra a distribuição de todos os itens dela;
+  - aba com a listagem geral de itens (hoje só há a busca em Ajustes → Itens e o detalhe do item).
 - **Dia preferencial de compra** (a priorizar): definir o dia da semana em que a casa costuma ir ao mercado e cortar os períodos de budget a partir dele (ex.: sábado a sexta), em vez de segunda a domingo. Muda `periodoDe` e as contagens de dias `d` e `D`.
 - **v3**: sugestão de itens pelo padrão de recompra; foto da etiqueta e código de barras; outros estabelecimentos pagos com VR (padaria, açougue, sacolão); modo offline.
 
