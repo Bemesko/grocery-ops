@@ -35,7 +35,7 @@
             ref="campoPreco"
             v-model="precoTexto"
             inputmode="decimal"
-            :placeholder="referencia && unidadeRef === un ? dinheiroParaCampo(referencia.preco) : '0,00'"
+            :placeholder="referencia && unidadeRef === un && !ocultos ? dinheiroParaCampo(referencia.preco) : '0,00'"
             autocomplete="off"
           />
         </div>
@@ -128,6 +128,8 @@ const pesoTexto = ref(un.value === 'kg' && qtdInicial ? String(qtdInicial).repla
 const precoTexto = ref(dinheiroParaCampo(props.inicial?.precoUnitario))
 const precoCheioTexto = ref(dinheiroParaCampo(props.inicial?.precoCheio))
 const variante = ref(props.inicial?.variante ?? '')
+// Modo "ocultar valores": o placeholder não mostra o preço anterior.
+const { ocultos } = useOcultarValores()
 
 // Embalagem: a da linha (ao corrigir), senão a da última compra aqui, senão a habitual.
 const embalagemSugerida = props.inicial

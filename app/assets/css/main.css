@@ -92,6 +92,13 @@ h3 {
   margin-bottom: 0.75rem;
 }
 
+/* Lado direito do cabeçalho: links da tela + o olho de ocultar valores, sempre por último. */
+.cabecalho-acoes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .cartao {
   background: var(--superficie);
   border: 1px solid var(--borda);

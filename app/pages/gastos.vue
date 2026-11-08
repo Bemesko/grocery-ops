@@ -2,7 +2,10 @@
   <main class="pagina">
     <header class="cabecalho">
       <h1>Gastos</h1>
-      <NuxtLink to="/compras" class="suave">Compras →</NuxtLink>
+      <div class="cabecalho-acoes">
+        <NuxtLink to="/compras" class="suave">Compras →</NuxtLink>
+        <OlhoValores />
+      </div>
     </header>
 
     <div class="chips modo" role="radiogroup" aria-label="Período">

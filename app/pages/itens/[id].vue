@@ -2,6 +2,7 @@
   <main class="pagina">
     <header class="cabecalho">
       <a href="#" class="suave" @click.prevent="$router.back()">← Voltar</a>
+      <OlhoValores />
     </header>
 
     <template v-if="d">

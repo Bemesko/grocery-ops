@@ -6,7 +6,10 @@
   <main class="pagina">
     <header class="cabecalho">
       <h1>Itens</h1>
-      <NuxtLink to="/ajustes" class="suave">← Ajustes</NuxtLink>
+      <div class="cabecalho-acoes">
+        <NuxtLink to="/ajustes" class="suave">← Ajustes</NuxtLink>
+        <OlhoValores />
+      </div>
     </header>
 
     <div class="linha busca">

@@ -1,7 +1,10 @@
 <template>
   <main class="pagina">
     <template v-if="carregado && !compra">
-      <header class="cabecalho"><h1>Mercado</h1></header>
+      <header class="cabecalho">
+        <h1>Mercado</h1>
+        <OlhoValores />
+      </header>
       <p class="vazio">
         Nenhuma compra em andamento.<br />
         <NuxtLink to="/">Prepare a ida na lista</NuxtLink> ou comece agora:
@@ -19,6 +22,7 @@
         <div class="linha">
           <h1 class="cresce">{{ compra.mercado }}</h1>
           <strong class="num total">{{ formatarDinheiro(totalCarrinho) }}</strong>
+          <OlhoValores />
         </div>
         <div class="linha suave">
           <span class="cresce">

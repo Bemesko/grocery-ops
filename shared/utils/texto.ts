@@ -43,8 +43,20 @@ export function quantidadeDoTexto(texto: string | null | undefined): number | nu
 
 const reais = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
+/** Texto no lugar de um valor quando o modo "ocultar valores" está ligado (largura fixa). */
+export const DINHEIRO_OCULTO = 'R$ •••••'
+
+// Modo "ocultar valores" (o olho no cabeçalho): o front registra um getter que lê um ref,
+// então os templates que chamam formatarDinheiro reagem ao alternar. No servidor, nunca.
+let dinheiroOculto: () => boolean = () => false
+
+export function definirOcultarDinheiro(getter: () => boolean) {
+  dinheiroOculto = getter
+}
+
 export function formatarDinheiro(centavos: number | null | undefined): string {
   if (centavos === null || centavos === undefined) return '—'
+  if (dinheiroOculto()) return DINHEIRO_OCULTO
   return reais.format(centavos / 100)
 }
 

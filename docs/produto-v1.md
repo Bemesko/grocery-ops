@@ -99,6 +99,7 @@ Detalhe do item: último preço em cada mercado e as últimas compras, com a emb
 - Saldo do VR também define o **dia de ir ao mercado** (padrão: sexta), usado no budget semanal.
 - Itens (tela própria, `/itens`): todos por categoria, com busca; seleção para mudar a categoria de vários de uma vez e para juntar vários num só (escolhendo o nome que fica); "possíveis duplicados" por nome parecido, com "são diferentes" para dispensar o par; apagar itens nunca usados. No detalhe do item: renomear, categoria, unidade e embalagem habitual.
 - Importar histórico (CSV).
+- **Ocultar valores**: o olho no canto do cabeçalho de todas as telas troca todo valor em R$ (saldo, budget, preços, totais, estimativas, referências) por `R$ •••••`. Percentuais, quantidades, barras e o formato do gráfico continuam; na folha de preço, o que se digita continua visível. A escolha fica no aparelho (cada celular decide o seu).
 
 ## Regras de cálculo
 

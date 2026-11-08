@@ -2,6 +2,7 @@
   <main class="pagina">
     <header class="cabecalho">
       <NuxtLink to="/compras" class="suave">← Compras</NuxtLink>
+      <OlhoValores />
     </header>
 
     <template v-if="r">
