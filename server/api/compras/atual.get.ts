@@ -20,13 +20,15 @@ export default defineEventHandler(async (): Promise<RespostaCompraAtual> => {
   `
   const refs = await referencias(sql)
   const quantidades = await ultimasQuantidades(sql)
+  const habituais = await embalagensHabituais(sql)
   const pendentes: PendenteMercado[] = lista
     .filter((l) => !jaPegos.has(l.listaItemId as number))
     .map((l) => {
       const itemId = l.itemId as number
       const ref = refs.get(`${itemId}:${compra.mercadoId}`)
       const outra = ref ? null : referenciaOutroMercado(refs, itemId, compra.mercadoId)
-      const preco = ref?.preco ?? outra?.preco
+      const base = ref ?? outra
+      const preco = base ? precoNaEmbalagem(base.preco, base.embalagem, habituais.get(itemId) ?? null) : undefined
       const qtd = quantidadeEstimada(l.quantidade as string | null, quantidades.get(itemId))
       return {
         ...(l as unknown as PendenteMercado),

@@ -57,10 +57,12 @@
         <h2>Preços que mudaram</h2>
         <ul class="lista">
           <li v-for="i in [...r.altas, ...r.baixas]" :key="i.id">
-            <span class="cresce">{{ i.nome }}</span>
-            <span class="suave num">{{ formatarDinheiro(i.variacao!.anterior) }} →</span>
-            <span class="num">{{ formatarDinheiro(i.precoUnitario) }}</span>
-            <SeloVariacao :variacao="i.variacao" />
+            <span class="cresce">
+              {{ i.nome }}
+              <SeloVariacao :variacao="i.variacao" class="selos-linha" />
+            </span>
+            <span class="suave num">{{ formatarDinheiro(i.variacao!.anterior) }}{{ i.variacao!.porConteudo }} →</span>
+            <span class="num">{{ formatarDinheiro(precoComparado(i)) }}{{ i.variacao!.porConteudo }}</span>
           </li>
         </ul>
       </template>
@@ -72,7 +74,7 @@
           <span class="cresce">
             {{ i.nome }}
             <span class="suave">
-              · {{ formatarQuantidade(i.quantidade, i.unidade) }} × {{ formatarDinheiro(i.precoUnitario) }}
+              · {{ formatarQuantidade(i.quantidade, i.unidade) }}<template v-if="i.embalagem"> de {{ formatarEmbalagem(i.embalagem) }}</template> × {{ formatarDinheiro(i.precoUnitario) }}
               <template v-if="i.variante"> · {{ i.variante }}</template>
             </span>
             <span v-if="i.daLista === false" class="selo neutro">fora da lista</span>
@@ -157,6 +159,11 @@ async function salvarNota() {
     avisar('Total da nota salvo')
   }
 }
+
+/** Preço atual na mesma base da variação: por kg/L/un quando as embalagens diferem. */
+function precoComparado(i: CompraItem) {
+  return i.variacao?.porConteudo && i.embalagem ? precoBase(i.precoUnitario, i.embalagem) : i.precoUnitario
+}
 </script>
 
 <style scoped>
@@ -180,5 +187,8 @@ h1 {
 
 .clicavel {
   cursor: pointer;
+}
+.selos-linha {
+  margin-top: 0.2rem;
 }
 </style>

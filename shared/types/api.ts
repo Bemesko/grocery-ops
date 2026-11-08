@@ -60,10 +60,15 @@ export interface RespostaLista {
 }
 
 export interface Variacao {
+  /** Preço anterior: da unidade/kg, ou por conteúdo quando `porConteudo`. */
   anterior: number
   percentual: number
   /** null = mesmo mercado; senão o nome do mercado comparado. */
   outroMercado: string | null
+  /** '/kg', '/L' ou '/un' quando as embalagens diferem e a comparação é por conteúdo. */
+  porConteudo: string | null
+  /** A embalagem encolheu e o preço por conteúdo subiu. */
+  reduflacao: Reduflacao | null
 }
 
 export interface CompraItem {
@@ -76,6 +81,7 @@ export interface CompraItem {
   precoUnitario: number
   precoCheio: number | null
   variante: string | null
+  embalagem: Embalagem | null
   daLista: boolean | null
   total: number
   variacao: Variacao | null
@@ -88,6 +94,8 @@ export interface DadosLinha {
   precoUnitario: number
   precoCheio: number | null
   variante: string | null
+  /** Só para itens por unidade. */
+  embalagem: Embalagem | null
   categoriaId: number | null
 }
 

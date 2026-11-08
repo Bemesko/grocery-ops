@@ -15,7 +15,8 @@ export function avisar(texto: string, tipo: Aviso['tipo'] = 'info', acao?: Aviso
   aviso.value = novo
   setTimeout(
     () => {
-      if (aviso.value === novo) aviso.value = null
+      // useState guarda um proxy reativo: compara com o objeto original.
+      if (aviso.value && toRaw(aviso.value) === novo) aviso.value = null
     },
     acao ? 5000 : 3500,
   )

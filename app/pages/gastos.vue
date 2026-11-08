@@ -324,6 +324,7 @@ const maiorSemana = computed(() =>
 }
 
 button.abrir {
+  justify-content: stretch;
   border: 0;
   background: none;
   padding: 0;

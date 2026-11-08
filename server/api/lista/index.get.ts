@@ -12,6 +12,7 @@ export default defineEventHandler(async (): Promise<RespostaLista> => {
   const mercados = (await sql`select id, nome, tipo from mercado order by nome`) as unknown as Mercado[]
   const refs = await referencias(sql)
   const quantidades = await ultimasQuantidades(sql)
+  const habituais = await embalagensHabituais(sql)
   const [atual] = await sql`
     select c.id, c.mercado_id, m.nome as mercado
     from compra c join mercado m on m.id = c.mercado_id where c.status = 'em_andamento'
@@ -22,7 +23,8 @@ export default defineEventHandler(async (): Promise<RespostaLista> => {
       const estimativas: Record<string, number> = {}
       for (const m of mercados) {
         const ref = refs.get(`${li.itemId}:${m.id}`)
-        if (ref) estimativas[m.id] = totalItem(qtd, ref.preco)
+        // Pacotes de tamanhos diferentes: estima pela embalagem habitual do item.
+        if (ref) estimativas[m.id] = totalItem(qtd, precoNaEmbalagem(ref.preco, ref.embalagem, habituais.get(li.itemId as number) ?? null))
       }
       return { ...(li as unknown as ListaItem), estimativas }
     }),

@@ -134,6 +134,19 @@ describe('evolucaoSemanas', () => {
     )
   })
 
+  it('domingo 8/nov depois da ida de sexta: as 3 semanas seguintes com R$ 220', () => {
+    const e = evolucaoSemanas(semanas, new Map([['2026-11-09', 135_01]]), 660_00, '2026-11-08')
+    assert.equal(e[0]!.situacao, 'atual')
+    assert.deepEqual(
+      e.slice(1).map((x) => [x.budget, x.situacao]),
+      [
+        [220_00, 'futura'],
+        [220_00, 'futura'],
+        [220_00, 'futura'],
+      ],
+    )
+  })
+
   it('sem ajuste de saldo no ciclo, só o gasto', () => {
     const e = evolucaoSemanas(semanas, new Map([['2026-11-09', 100_00]]), null, '2026-12-05')
     assert.equal(e[0]!.budget, null)

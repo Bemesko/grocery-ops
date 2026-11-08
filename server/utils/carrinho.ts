@@ -10,7 +10,8 @@ export function lerLinhaCarrinho(corpo: Record<string, unknown> | undefined) {
   if (quantidade !== null && Math.round(quantidade * 1000) / 1000 !== quantidade) {
     erro(400, 'quantidade com mais de 3 casas decimais')
   }
-  return { unidade: un, quantidade, preco, precoCheio, variante }
+  const embalagem = embalagemEntrada(corpo?.embalagem)
+  return { unidade: un, quantidade, preco, precoCheio, variante, embalagem }
 }
 
 export async function compraEditavel(sql: Sql, id: number) {

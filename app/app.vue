@@ -41,6 +41,7 @@ function executarAcao() {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  width: max-content;
 }
 
 .acao-toast {

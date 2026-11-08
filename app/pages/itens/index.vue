@@ -105,8 +105,8 @@
         <p class="suave">As compras e a lista dos outros passam para ele, e os outros somem.</p>
         <button type="button" class="texto" @click="acao = null">Cancelar</button>
       </template>
-      <div v-else class="linha">
-        <span class="cresce"><strong>{{ selecionados.size }}</strong> selecionados</span>
+      <div v-else class="linha barra-acoes">
+        <span class="cresce"><strong>{{ selecionados.size }}</strong> {{ selecionados.size === 1 ? 'selecionado' : 'selecionados' }}</span>
         <button type="button" @click="acao = 'mover'">Mover…</button>
         <button type="button" :disabled="selecionados.size < 2" @click="acao = 'juntar'">Juntar…</button>
         <button type="button" class="texto" @click="selecionados = new Set()">Limpar</button>
@@ -259,6 +259,11 @@ async function apagar(i: ItemResumo) {
   border-top: 1px solid var(--borda);
 }
 
+.cresce {
+  flex: 1;
+  min-width: 0;
+}
+
 .link {
   display: grid;
   color: inherit;
@@ -291,6 +296,14 @@ h3.linha {
   margin-top: 1rem;
   display: grid;
   gap: 0.5rem;
+}
+
+.barra-acoes {
+  flex-wrap: wrap;
+}
+
+.barra-acoes .cresce {
+  flex-basis: 100%;
 }
 
 .rodape p {

@@ -17,6 +17,14 @@ export default defineEventHandler(async (event) => {
   const quantidade = linha.quantidade ?? 1
   // O app lembra a unidade usada por último (ex.: um item que passou a ser comprado a granel).
   if (un !== item.unidade) await sql`update item set unidade = ${un} where id = ${item.id}`
+  // Embalagem só faz sentido por unidade; a primeira registrada vira a habitual do item.
+  const embalagem = un === 'un' ? linha.embalagem : null
+  if (embalagem) {
+    await sql`
+      update item set embalagem_qtd = ${embalagem.qtd}, embalagem_unidade = ${embalagem.unidade}
+      where id = ${item.id} and embalagem_qtd is null
+    `
+  }
   const [naLista] = await sql`
     select li.id from lista_item li
     where li.item_id = ${item.id} and li.status = 'aberto'
@@ -24,9 +32,10 @@ export default defineEventHandler(async (event) => {
   `
   const [criado] = await sql`
     insert into compra_item (compra_id, item_id, lista_item_id, variante, unidade, quantidade,
-      preco_unitario_centavos, preco_cheio_centavos, da_lista, total_centavos)
+      preco_unitario_centavos, preco_cheio_centavos, da_lista, total_centavos, embalagem_qtd, embalagem_unidade)
     values (${compraId}, ${item.id}, ${(naLista?.id as number) ?? null}, ${linha.variante}, ${un}, ${quantidade},
-      ${linha.preco}, ${linha.precoCheio}, ${Boolean(naLista)}, ${totalItem(quantidade, linha.preco!)})
+      ${linha.preco}, ${linha.precoCheio}, ${Boolean(naLista)}, ${totalItem(quantidade, linha.preco!)},
+      ${embalagem?.qtd ?? null}, ${embalagem?.unidade ?? null})
     returning id
   `
   metricas.itensCarrinho.add(1, { 'grocery.from_list': Boolean(naLista) })

@@ -105,3 +105,14 @@ export function detectarReduflacao(
 export function embalagemDe(qtd: unknown, unidade: unknown): Embalagem | null {
   return typeof qtd === 'number' && typeof unidade === 'string' ? { qtd, unidade: unidade as UnidadeEmbalagem } : null
 }
+
+/**
+ * Preço de um pacote de referência levado para a embalagem habitual do item, quando as duas
+ * são comparáveis (ex.: último preço é de 800 g, a casa costuma levar 1 kg). Senão, o próprio.
+ */
+export function precoNaEmbalagem(preco: number, daReferencia: Embalagem | null, habitual: Embalagem | null): number {
+  if (!daReferencia || !habitual || !mesmaBase(daReferencia, habitual) || mesmoConteudo(daReferencia, habitual)) {
+    return preco
+  }
+  return Math.round((preco / conteudoBase(daReferencia)) * conteudoBase(habitual))
+}

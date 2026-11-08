@@ -119,7 +119,7 @@
       <h2>Importar histórico (CSV)</h2>
       <p class="suave">
         Colunas: data, mercado, item, categoria, unidade, quantidade, preco_unitario e, opcionais, variante,
-        preco_cheio, da_lista, total_nota, compra. Separador vírgula ou ponto e vírgula.
+        preco_cheio, da_lista, total_nota, compra, embalagem (ex.: 800 g). Separador vírgula ou ponto e vírgula.
       </p>
       <input type="file" accept=".csv,text/csv" @change="lerArquivo" />
       <div v-if="previa" class="cartao previa">

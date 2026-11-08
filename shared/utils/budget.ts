@@ -91,12 +91,13 @@ export function evolucaoSemanas(
     const budget = saldoFim === null ? null : Math.round((saldoFim + gastoDali) / (semanas.length - i))
     resultado.unshift({ ...s, budget, gasto, situacao: situacao(s) })
   }
-  // Semanas futuras: o saldo de agora menos o que a semana atual ainda pode gastar,
-  // dividido igualmente (é o que elas terão se a semana atual gastar o budget).
+  // Semanas futuras dividem igualmente o saldo de agora. Enquanto a ida da semana atual não
+  // aconteceu (nada gasto), o budget dela fica reservado; depois, o que sobrou dela passa
+  // para as próximas (como "próximas semanas" no cabeçalho e em Ajustes).
   const futuras = resultado.filter((s) => s.situacao === 'futura')
   const atual = resultado.find((s) => s.situacao === 'atual')
   if (saldoFim !== null && futuras.length) {
-    const reservado = atual?.budget ? Math.max(0, atual.budget - atual.gasto) : 0
+    const reservado = atual?.budget && atual.gasto === 0 ? atual.budget : 0
     for (const s of futuras) s.budget = Math.round((saldoFim - reservado) / futuras.length)
   }
   return resultado

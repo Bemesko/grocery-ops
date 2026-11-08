@@ -1,10 +1,12 @@
-// Renomear, mudar categoria ou unidade. Renomear para o nome de outro item → use "juntar".
+// Renomear, mudar categoria, unidade ou embalagem habitual. Renomear para o nome de outro item → use "juntar".
 export default defineEventHandler(async (event) => {
   const id = idDaRota(event)
   const corpo = await readBody(event)
   const nome = texto(corpo?.nome, 'nome', { max: 80 })
   const categoriaId = inteiro(corpo?.categoriaId, 'categoria', { min: 1 })
   const un = unidade(corpo?.unidade)
+  const mudaEmbalagem = corpo && 'embalagem' in corpo
+  const embalagem = embalagemEntrada(corpo?.embalagem)
   const sql = await useDb()
   const nomeLimpo = nome ? limparNome(nome) : null
   try {
@@ -13,7 +15,9 @@ export default defineEventHandler(async (event) => {
         nome = coalesce(${nomeLimpo}, nome),
         nome_normalizado = coalesce(${nomeLimpo ? normalizarNome(nomeLimpo) : null}, nome_normalizado),
         categoria_id = coalesce(${categoriaId}, categoria_id),
-        unidade = coalesce(${un}, unidade)
+        unidade = coalesce(${un}, unidade),
+        embalagem_qtd = ${mudaEmbalagem ? (embalagem?.qtd ?? null) : sql`embalagem_qtd`},
+        embalagem_unidade = ${mudaEmbalagem ? (embalagem?.unidade ?? null) : sql`embalagem_unidade`}
       where id = ${id}
       returning id, nome, categoria_id, unidade
     `

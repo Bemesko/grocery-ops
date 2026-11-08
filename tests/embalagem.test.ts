@@ -7,6 +7,7 @@ import {
   lerEmbalagem,
   mesmaBase,
   precoBase,
+  precoNaEmbalagem,
 } from '../shared/utils/embalagem.ts'
 
 describe('lerEmbalagem', () => {
@@ -62,5 +63,15 @@ describe('detectarReduflacao', () => {
   })
   it('sem embalagem em uma das compras: não dá para saber', () => {
     assert.equal(detectarReduflacao({ preco: 20_00, embalagem: null }, { preco: 20_00, embalagem: g800 }), null)
+  })
+})
+
+describe('precoNaEmbalagem', () => {
+  it('leva o preço de 800 g para a embalagem habitual de 1 kg', () => {
+    assert.equal(precoNaEmbalagem(18_00, { qtd: 800, unidade: 'g' }, { qtd: 1, unidade: 'kg' }), 22_50)
+  })
+  it('sem embalagem comparável, mantém o preço', () => {
+    assert.equal(precoNaEmbalagem(18_00, null, { qtd: 1, unidade: 'kg' }), 18_00)
+    assert.equal(precoNaEmbalagem(18_00, { qtd: 1, unidade: 'l' }, { qtd: 1, unidade: 'kg' }), 18_00)
   })
 })

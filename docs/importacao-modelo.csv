@@ -1,6 +1,6 @@
-data,mercado,item,categoria,unidade,quantidade,preco_unitario,variante,preco_cheio,da_lista,total_nota,compra
-2026-10-05,Atacado,Arroz,Mercearia,un,1,"24,90",Tio João 5kg,,sim,"67,40",
-2026-10-05,Atacado,Banana,Hortifruti,kg,"1,250","5,99",prata,,sim,"67,40",
-2026-10-05,Atacado,Detergente,Limpeza,un,3,"2,49",,"2,99",não,"67,40",
-2026-10-05,Atacado,Leite,Frios e laticínios,un,6,"4,59",integral 1L,,sim,"67,40",
-2026-10-12,Variedade,Tapioca,Mercearia,un,1,"9,90",500g,,,,
+data,mercado,item,categoria,unidade,quantidade,preco_unitario,variante,preco_cheio,da_lista,total_nota,compra,embalagem
+2026-10-05,Atacado,Arroz,Mercearia,un,1,"24,90",Tio João 5kg,,sim,"67,40",,5 kg
+2026-10-05,Atacado,Banana,Hortifruti,kg,"1,250","5,99",prata,,sim,"67,40",,
+2026-10-05,Atacado,Detergente,Limpeza,un,3,"2,49",,"2,99",não,"67,40",,
+2026-10-05,Atacado,Leite,Frios e laticínios,un,6,"4,59",integral 1L,,sim,"67,40",,1 L
+2026-10-12,Variedade,Tapioca,Mercearia,un,1,"9,90",500g,,,,,
