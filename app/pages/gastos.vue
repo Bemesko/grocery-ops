@@ -82,8 +82,10 @@
                   <span class="cresce">
                     {{ diaMes(s.segunda) }}–{{ diaMes(somarDias(s.segunda, 6)) }}
                     <span class="suave detalhe">
-                      · ida {{ diaSemanaCurto(s.diaPreferido) }} {{ diaMes(s.diaPreferido) }}
+                      <template v-if="s.atrasada">· ida atrasada (era {{ diaSemanaCurto(s.diaPreferido) }} {{ diaMes(s.diaPreferido) }})</template>
+                      <template v-else>· ida {{ diaSemanaCurto(s.diaPreferido) }} {{ diaMes(s.diaPreferido) }}</template>
                       <template v-if="s.situacao === 'atual'"> · agora</template>
+                      <br />compras de {{ diaMes(s.inicio) }} a {{ diaMes(s.fim) }}
                     </span>
                   </span>
                   <span class="num">

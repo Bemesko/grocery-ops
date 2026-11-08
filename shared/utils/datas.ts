@@ -81,10 +81,14 @@ export interface SemanaBudget {
   fim: string
   /** Dia preferencial de ir ao mercado para esta semana. */
   diaPreferido: string
+  /**
+   * Semana da ida atrasada do mês anterior: houve compra entre o dia 1 e o início da
+   * primeira janela do mês (ver `diasDaIdaAtrasada`). Ela vira uma semana a mais do ciclo.
+   */
+  atrasada?: boolean
 }
 
-/** Semanas do ciclo `mes` (AAAA-MM), na ordem, com o intervalo de datas de compra de cada uma. */
-export function semanasDoCiclo(mes: string, p: number): SemanaBudget[] {
+function diasDoCiclo(mes: string, p: number) {
   const primeiro = `${mes}-01`
   const ultimo = ultimoDiaDoMes(primeiro)
   const dias: { dia: string; segunda: string; ciclo: string }[] = []
@@ -92,18 +96,53 @@ export function semanasDoCiclo(mes: string, p: number): SemanaBudget[] {
     const segunda = semanaDaCompra(dia)
     dias.push({ dia, segunda, ciclo: diaPreferidoDa(segunda, p).slice(0, 7) })
   }
+  return dias
+}
+
+/**
+ * Dias do começo do mês cuja semana teve a ida no mês anterior (ex.: nov/2026 com sexta:
+ * domingo 1/11 a terça 3/11, semana de 2/11 com ida em 30/10). Uma compra nesses dias é a
+ * ida do mês anterior que atrasou. null se o mês não tem esses dias.
+ */
+export function diasDaIdaAtrasada(mes: string, p: number): { inicio: string; fim: string } | null {
+  const cabeca = diasDoCiclo(mes, p).filter((d) => d.ciclo < mes)
+  return cabeca.length ? { inicio: cabeca[0]!.dia, fim: cabeca.at(-1)!.dia } : null
+}
+
+/**
+ * Semanas do ciclo `mes` (AAAA-MM), na ordem, com o intervalo de datas de compra de cada uma.
+ * `idaAtrasada`: houve compra em `diasDaIdaAtrasada`; esses dias viram uma semana própria no
+ * início do ciclo (o mês ganha uma semana) em vez de entrar na primeira semana.
+ */
+export function semanasDoCiclo(mes: string, p: number, idaAtrasada = false): SemanaBudget[] {
+  const dias = diasDoCiclo(mes, p)
   const doCiclo = [...new Set(dias.filter((d) => d.ciclo === mes).map((d) => d.segunda))]
   const semanas = new Map<string, SemanaBudget>()
   for (const d of dias) {
-    const segunda = d.ciclo === mes ? d.segunda : d.ciclo < mes ? doCiclo[0]! : doCiclo.at(-1)!
+    let segunda: string
+    let atrasada = false
+    if (d.ciclo === mes) segunda = d.segunda
+    else if (d.ciclo > mes) segunda = doCiclo.at(-1)!
+    else if (idaAtrasada) {
+      segunda = d.segunda
+      atrasada = true
+    } else segunda = doCiclo[0]!
     const s = semanas.get(segunda)
     if (s) s.fim = d.dia
-    else semanas.set(segunda, { segunda, inicio: d.dia, fim: d.dia, diaPreferido: diaPreferidoDa(segunda, p) })
+    else {
+      semanas.set(segunda, {
+        segunda,
+        inicio: d.dia,
+        fim: d.dia,
+        diaPreferido: diaPreferidoDa(segunda, p),
+        ...(atrasada ? { atrasada } : {}),
+      })
+    }
   }
   return [...semanas.values()]
 }
 
 /** Semana de budget de uma compra feita em `dia`, já presa ao mês do dia. */
-export function semanaEfetiva(dia: string, p: number): SemanaBudget {
-  return semanasDoCiclo(dia.slice(0, 7), p).find((s) => s.inicio <= dia && dia <= s.fim)!
+export function semanaEfetiva(dia: string, p: number, idaAtrasada = false): SemanaBudget {
+  return semanasDoCiclo(dia.slice(0, 7), p, idaAtrasada).find((s) => s.inicio <= dia && dia <= s.fim)!
 }

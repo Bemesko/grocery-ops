@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { evolucaoSemanas, projetarBudget, type BaseBudget } from '../shared/utils/budget.ts'
-import { diaPreferidoDa, semanaDaCompra, semanaEfetiva, semanasDoCiclo } from '../shared/utils/datas.ts'
+import { diaPreferidoDa, diasDaIdaAtrasada, semanaDaCompra, semanaEfetiva, semanasDoCiclo } from '../shared/utils/datas.ts'
 
 const SEXTA = 4
 const SEGUNDA = 0
@@ -58,6 +58,29 @@ describe('semanasDoCiclo', () => {
     assert.equal(ultima.diaPreferido, '2026-12-25')
     assert.equal(ultima.fim, '2026-12-31')
     assert.equal(semanaEfetiva('2026-12-30', SEXTA).segunda, ultima.segunda)
+  })
+
+  it('ida atrasada: compra no domingo 1/11 vira a semana de 2/11 e novembro tem 5 semanas', () => {
+    assert.deepEqual(diasDaIdaAtrasada('2026-11', SEXTA), { inicio: '2026-11-01', fim: '2026-11-03' })
+    const s = semanasDoCiclo('2026-11', SEXTA, true)
+    assert.deepEqual(
+      s.map((x) => [x.segunda, x.inicio, x.fim, Boolean(x.atrasada)]),
+      [
+        ['2026-11-02', '2026-11-01', '2026-11-03', true],
+        ['2026-11-09', '2026-11-04', '2026-11-10', false],
+        ['2026-11-16', '2026-11-11', '2026-11-17', false],
+        ['2026-11-23', '2026-11-18', '2026-11-24', false],
+        ['2026-11-30', '2026-11-25', '2026-11-30', false],
+      ],
+    )
+    // a ida de sexta 6/11 continua na semana de 9/11
+    assert.equal(semanaEfetiva('2026-11-06', SEXTA, true).segunda, '2026-11-09')
+  })
+
+  it('mês cuja primeira janela começa no dia 1 não tem ida atrasada', () => {
+    // out/2026: quinta 1/10 já é da semana de 5/10 (ida sexta 2/10)
+    assert.equal(diasDaIdaAtrasada('2026-10', SEXTA), null)
+    assert.equal(semanasDoCiclo('2026-10', SEXTA, true).length, semanasDoCiclo('2026-10', SEXTA).length)
   })
 
   it('cobre todos os dias do mês, sem buracos', () => {
