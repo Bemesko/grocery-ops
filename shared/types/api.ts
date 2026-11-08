@@ -1,5 +1,6 @@
 // Formatos das respostas da API (server/api), usados pelas páginas em app/.
-import type { BaseBudget } from '../utils/budget'
+import type { BaseBudget, SemanaEvolucao } from '../utils/budget'
+import type { Embalagem, Reduflacao } from '../utils/embalagem'
 
 export type Unidade = 'un' | 'kg'
 
@@ -21,6 +22,7 @@ export interface PrecoReferencia {
   quantidade: number
   variante: string | null
   data: string
+  embalagem: Embalagem | null
 }
 
 export interface ItemResumo {
@@ -29,6 +31,8 @@ export interface ItemResumo {
   categoriaId: number
   unidade: Unidade
   usos: number
+  /** Embalagem habitual (opcional): base das estimativas quando os mercados vendem tamanhos diferentes. */
+  embalagem: Embalagem | null
   ultimaQuantidade: number | null
   /** Último preço por mercado (chave = id do mercado). */
   precos: Record<string, PrecoReferencia>
@@ -131,16 +135,35 @@ export interface ResumoCompra {
   divergencia: number | null
 }
 
+export interface GastoItem {
+  itemId: number
+  nome: string
+  total: number
+  quantidade: number
+  unidade: Unidade
+}
+
 export interface Gastos {
-  mes: string
+  tipo: 'mes' | 'trimestre'
+  /** AAAA-MM ou AAAA-Tn. */
+  periodo: string
+  inicio: string
+  fim: string
+  /** Meses com compras finalizadas (AAAA-MM), do mais recente ao mais antigo. */
   meses: string[]
   total: number
   compras: number
-  porCategoria: { categoria: string; total: number }[]
+  /** Total de cada mês do período (no trimestre, os 3 meses). */
+  porMes: { mes: string; total: number }[]
+  /** Com todos os itens de cada categoria, para o drill-down. */
+  porCategoria: { categoriaId: number; categoria: string; total: number; itens: GastoItem[] }[]
   porMercado: { mercado: string; total: number }[]
-  topItens: { itemId: number; nome: string; total: number; quantidade: number; unidade: Unidade }[]
+  topItens: GastoItem[]
   /** Só compras em que se sabe se o item estava na lista. */
   foraDaLista: { total: number; conhecido: number }
+  /** Budget × gasto por semana (só no mês). */
+  semanas: SemanaEvolucao[] | null
+}
 }
 
 export interface Configuracao {

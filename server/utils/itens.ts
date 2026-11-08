@@ -37,3 +37,33 @@ export async function resolverItem(
   `
   return criado as unknown as ItemBanco
 }
+
+/**
+ * Junta `origem` em `destino` dentro de uma transação: compras e lista passam para o
+ * destino e a origem some. Se os dois estão abertos na lista, fica só o do destino, com a
+ * prioridade e a seleção "nesta ida" somadas.
+ */
+export async function juntarItem(tx: Sql, origem: number, destino: number) {
+  if (destino === origem) erro(400, 'Escolha outro item')
+  const encontrados = await tx`select id from item where id in ${tx([origem, destino])}`
+  if (encontrados.length !== 2) erro(404, 'Item não encontrado')
+  await tx`update compra_item set item_id = ${destino} where item_id = ${origem}`
+  const [abertoOrigem] = await tx`select id, prioritario, nesta_ida from lista_item where item_id = ${origem} and status = 'aberto'`
+  const [abertoDestino] = await tx`select id from lista_item where item_id = ${destino} and status = 'aberto'`
+  if (abertoOrigem && abertoDestino) {
+    await tx`
+      update lista_item set
+        prioritario = prioritario or ${abertoOrigem.prioritario as boolean},
+        nesta_ida = nesta_ida or ${abertoOrigem.nestaIda as boolean}
+      where id = ${abertoDestino.id as number}
+    `
+    await tx`update lista_item set status = 'removido', resolvido_em = now() where id = ${abertoOrigem.id as number}`
+  }
+  await tx`update lista_item set item_id = ${destino} where item_id = ${origem}`
+  // A embalagem habitual do destino prevalece; sem ela, herda a da origem.
+  await tx`
+    update item d set embalagem_qtd = o.embalagem_qtd, embalagem_unidade = o.embalagem_unidade
+    from item o where d.id = ${destino} and o.id = ${origem} and d.embalagem_qtd is null
+  `
+  await tx`delete from item where id = ${origem}`
+}

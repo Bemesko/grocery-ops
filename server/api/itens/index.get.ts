@@ -4,7 +4,7 @@ import type { ItemResumo } from '../../../shared/types/api'
 export default defineEventHandler(async (): Promise<ItemResumo[]> => {
   const sql = await useDb()
   const itens = await sql`
-    select i.id, i.nome, i.categoria_id, i.unidade,
+    select i.id, i.nome, i.categoria_id, i.unidade, i.embalagem_qtd, i.embalagem_unidade,
       (select count(*) from compra_item ci where ci.item_id = i.id)
         + (select count(*) from lista_item li where li.item_id = i.id) as usos
     from item i order by i.nome
@@ -14,7 +14,7 @@ export default defineEventHandler(async (): Promise<ItemResumo[]> => {
   const precos = new Map<number, ItemResumo['precos']>()
   for (const r of refs.values()) {
     const mapa = precos.get(r.itemId) ?? {}
-    mapa[r.mercadoId] = { preco: r.preco, quantidade: r.quantidade, variante: r.variante, data: r.data }
+    mapa[r.mercadoId] = { preco: r.preco, quantidade: r.quantidade, variante: r.variante, data: r.data, embalagem: r.embalagem }
     precos.set(r.itemId, mapa)
   }
   return itens.map((i) => ({
@@ -23,6 +23,7 @@ export default defineEventHandler(async (): Promise<ItemResumo[]> => {
     categoriaId: i.categoriaId as number,
     unidade: i.unidade as ItemResumo['unidade'],
     usos: i.usos as number,
+    embalagem: embalagemDe(i.embalagemQtd, i.embalagemUnidade),
     ultimaQuantidade: quantidades.get(i.id as number) ?? null,
     precos: precos.get(i.id as number) ?? {},
   }))

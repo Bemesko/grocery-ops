@@ -53,3 +53,11 @@ export function booleano(valor: unknown, campo: string): boolean | null {
   if (typeof valor !== 'boolean') erro(400, `${campo} deve ser verdadeiro ou falso`)
   return valor
 }
+
+export function listaDeIds(valor: unknown, campo: string): number[] {
+  if (!Array.isArray(valor) || !valor.length) erro(400, `${campo} deve ser uma lista de ids`)
+  const ids = valor.map((v) => Number(v))
+  if (ids.some((n) => !Number.isInteger(n) || n <= 0)) erro(400, `${campo} inválido`)
+  if (ids.length > 500) erro(400, `${campo}: no máximo 500`)
+  return [...new Set(ids)]
+}
