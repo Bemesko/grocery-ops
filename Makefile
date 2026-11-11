@@ -29,7 +29,8 @@ lint: ## Todos os hooks do pre-commit em todos os arquivos
 validate: ## kubeconform + kube-linter em deploy/ (base e overlays)
 	./scripts/validate-manifests.sh
 
-unit: ## Testes das regras (budget, embalagem) com node --test, sem dependências
+unit: ## Testes das regras com node --test (instala as dependências se faltarem: a NFC-e usa node-html-parser)
+	@test -d node_modules || $(NODE_RUN) $(NODE_IMAGE) npm ci --ignore-scripts
 	$(NODE_RUN) $(NODE_IMAGE) node --test 'tests/*.test.ts'
 
 test: lint unit ## Tudo que roda sem cluster (o lint já inclui o validate)
