@@ -3,10 +3,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import { digitoChave, formatarChave, lerChave } from '../shared/utils/chaveNfce.ts'
-import { detectarPagina, ehLinkDoQr, lerPaginaNfce, urlNfceDoTexto } from '../shared/utils/notaFiscal.ts'
+import { detectarPagina, lerPaginaNfce } from '../server/utils/paginaNfce.ts'
+import { ehLinkDoQr, ehPaginaSimples, urlNfceDoTexto } from '../shared/utils/notaFiscal.ts'
 
 const CHAVE = '42261111222333000181650010000012341123456788'
-const pagina = readFileSync(new URL('./fixtures/nfce-ficticia.html', import.meta.url), 'utf8')
+const ler = (nome: string) => readFileSync(new URL(`./fixtures/${nome}`, import.meta.url), 'utf8')
+const detalhada = ler('nfce-detalhada-ficticia.html')
+const simples = ler('nfce-ficticia.html')
 
 describe('lerChave', () => {
   it('confere o dígito e separa os campos', () => {
@@ -31,9 +34,9 @@ describe('lerChave', () => {
   })
 })
 
-describe('lerPaginaNfce', () => {
-  const lida = lerPaginaNfce(pagina, 'https://sat.sef.sc.gov.br/tax.NET/Sat.DFe.NFCe.Web/Consultas/NFCe_Detalhes.aspx?rq=x')
-  const nota = lida.tipo === 'nota' ? lida.nota : null
+describe('lerPaginaNfce (página detalhada)', () => {
+  const lida = lerPaginaNfce(detalhada, 'https://sat.sef.sc.gov.br/tax.NET/Sat.NFe.Web/Consultas/Nfe_DetalheCert.aspx?rq=x')
+  const nota = lida.tipo === 'detalhada' ? lida.nota : null
 
   it('lê emitente, chave, emissão e totais', () => {
     assert.ok(nota)
@@ -43,25 +46,49 @@ describe('lerPaginaNfce', () => {
     assert.equal(nota.emitidaEm, '2026-11-06T18:05:09-03:00')
     assert.equal(nota.numero, 1234)
     assert.equal(nota.serie, 1)
-    assert.deepEqual([nota.total, nota.desconto, nota.aPagar], [3831, 40, 3791])
+    assert.deepEqual([nota.total, nota.desconto, nota.aPagar], [1077, 40, 1037])
   })
 
-  it('lê as linhas: código, quantidade decimal, unidade e entidades', () => {
+  it('lê cada linha com o desconto e o EAN dela', () => {
     assert.deepEqual(nota?.itens, [
-      { ordem: 1, codigo: '620', descricao: 'AGUA MINERAL MARCA X 500ML S GAS PET', quantidade: 2, unidade: 'UN', unitario: 169, total: 338 },
-      { ordem: 2, codigo: '7001', descricao: 'BANANA PRATA KG', quantidade: 1.234, unidade: 'KG', unitario: 599, total: 739 },
-      { ordem: 3, codigo: '88', descricao: 'LTE INTEG TIPO A 1L P&B', quantidade: 6, unidade: 'CX', unitario: 459, total: 2754 },
+      {
+        ordem: 1,
+        codigo: '620',
+        descricao: 'AGUA MINERAL MARCA X 500ML S GAS PET',
+        quantidade: 2,
+        unidade: 'UN',
+        unitario: 169,
+        total: 338,
+        desconto: 40,
+        ean: '7890000000017',
+      },
+      {
+        ordem: 2,
+        codigo: '7001',
+        descricao: 'BANANA PRATA KG P&B',
+        quantidade: 1.234,
+        unidade: 'KG',
+        unitario: 599,
+        total: 739,
+        desconto: 0,
+        ean: null,
+      },
     ])
   })
 
-  it('nada do bloco do consumidor sai da leitura', () => {
+  it('nada do destinatário sai da leitura', () => {
     const texto = JSON.stringify(lida)
-    for (const pessoal of ['000.000.000-00', 'FULANO', 'FICTICIA', 'NAO DEVE SER LIDO']) {
+    for (const pessoal of ['000.000.000-00', 'FULANO', 'FICTICIA', '90000-0000', 'exemplo.invalid']) {
       assert.ok(!texto.includes(pessoal), pessoal)
     }
   })
+})
 
-  it('reconhece a verificação de segurança e o limite de consultas', () => {
+describe('detectarPagina', () => {
+  it('separa a detalhada, a simples, a verificação e o limite', () => {
+    assert.equal(detectarPagina(detalhada), 'detalhada')
+    assert.equal(detectarPagina(simples), 'simples')
+    assert.equal(lerPaginaNfce(simples).tipo, 'simples')
     assert.equal(detectarPagina('<div class="cf-turnstile" data-sitekey="x"></div>'), 'verificacao')
     assert.equal(detectarPagina('', 'https://sat.sef.sc.gov.br/tax.NET/SecurityVerify.aspx?rq=x'), 'verificacao')
     assert.equal(detectarPagina('O sistema detectou um número excessivo de requisições deste IP.'), 'limite')
@@ -90,6 +117,8 @@ describe('links da nota', () => {
     assert.equal(ehLinkDoQr(qr), true)
     assert.equal(ehLinkDoQr(urlNfceDoTexto(qr)!), true)
     assert.equal(ehLinkDoQr(pagina), false)
+    assert.equal(ehPaginaSimples(pagina), true)
+    assert.equal(ehPaginaSimples('https://sat.sef.sc.gov.br/tax.NET/Sat.NFe.Web/Consultas/Nfe_DetalheCert.aspx?rq=x'), false)
     assert.equal(lerChave(urlNfceDoTexto(qr))?.chave, CHAVE)
   })
 })

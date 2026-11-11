@@ -14,7 +14,13 @@
 
     <template v-else-if="c.estado === 'pendente'">
       <div class="cartao">
-        <VerificarNota v-if="c.url && ehLinkDoQr(c.url)" :url="c.url" :ocupado="lendo" @link="ler" />
+        <VerificarNota
+          v-if="c.url && (ehLinkDoQr(c.url) || ehPaginaSimples(c.url))"
+          :url="c.url"
+          :ocupado="lendo"
+          :mensagem="mensagem"
+          @link="ler"
+        />
         <template v-else>
           <p class="aviso alerta">
             {{
@@ -47,6 +53,15 @@
         </div>
       </div>
 
+      <div v-if="c.precisaDetalhada && c.url" class="cartao detalhada">
+        <VerificarNota
+          :url="c.url"
+          :ocupado="lendo"
+          mensagem="Esta nota tem desconto, mas a página lida não diz de qual item. Traga a página detalhada para conferir."
+          @link="ler"
+        />
+      </div>
+
       <template v-if="c.estado === 'conferida' && !editando">
         <ul class="lista">
           <li v-for="l in c.linhas" :key="l.ordem">
@@ -54,7 +69,7 @@
               {{ nomeAnotado(l.compraItemId) ?? 'fora da compra' }}
               <span class="suave descricao">{{ l.descricao }}</span>
             </span>
-            <span class="num">{{ formatarDinheiro(l.total) }}</span>
+            <span class="num">{{ formatarDinheiro(l.pago) }}</span>
           </li>
         </ul>
         <div class="linha botoes">
@@ -72,10 +87,13 @@
           <li v-for="l in c.linhas" :key="l.ordem" class="linha-nota">
             <div class="linha">
               <span class="cresce descricao-nota">{{ l.descricao }}</span>
-              <span class="num">{{ formatarDinheiro(l.total) }}</span>
+              <span class="num">{{ formatarDinheiro(l.pago) }}</span>
             </div>
             <div class="suave">
-              {{ quantidadeNota(l) }} × {{ formatarDinheiro(l.unitario) }}
+              {{ quantidadeNota(l) }} × {{ formatarDinheiro(precoPago(l)) }}
+              <template v-if="l.desconto">
+                (de {{ formatarDinheiro(l.unitario) }}, −{{ formatarDinheiro(l.desconto) }})
+              </template>
               <template v-if="l.embalagem"> · {{ formatarEmbalagem(l.embalagem) }}</template>
               <span v-if="l.nivel === 'sugerido' && escolhas[l.ordem]?.tipo === `ci:${l.compraItemId}`" class="selo neutro estado">confira</span>
               <span v-else-if="l.nivel === 'certo' || l.nivel === 'confirmado'" class="ok estado">✓</span>
@@ -115,7 +133,9 @@
         <p v-if="problema" class="aviso perigo">{{ problema }}</p>
         <div class="linha botoes fim">
           <button v-if="c.estado === 'conferida'" type="button" class="botao" @click="editando = false">Voltar</button>
-          <button type="submit" class="botao primario" :disabled="salvando">Confirmar conferência</button>
+          <button type="submit" class="botao primario" :disabled="salvando || c.precisaDetalhada">
+            Confirmar conferência
+          </button>
         </div>
       </form>
     </template>
@@ -161,6 +181,11 @@ const semPar = computed(() => props.anotados.filter((a) => !usados.value.has(`ci
 
 function nomeAnotado(id: number | null) {
   return id ? (props.anotados.find((a) => a.id === id)?.nome ?? null) : null
+}
+
+/** Preço pago da unidade: o que a pessoa anota. */
+function precoPago(l: LinhaConferencia) {
+  return Math.round(l.pago / l.quantidade)
 }
 
 function quantidadeNota(l: LinhaConferencia) {
@@ -221,7 +246,7 @@ async function ler(url: string) {
     const n = resposta.conferencia.linhas.length
     avisar(`Nota lida: ${n} ${n === 1 ? 'linha' : 'linhas'}`)
     emit('mudou')
-  } else if (!(resposta.resultado === 'verificacao' && ehLinkDoQr(url))) {
+  } else if (resposta.resultado !== 'simples' && !(resposta.resultado === 'verificacao' && ehLinkDoQr(url))) {
     // QR lido: o painel de verificação explica o próximo passo, sem aviso de erro.
     avisar(resposta.mensagem ?? 'Não consegui ler a nota', 'erro')
   }
@@ -312,6 +337,10 @@ watch(
 .novo select {
   width: 100%;
   min-width: 0;
+}
+
+.detalhada {
+  margin-bottom: 0.75rem;
 }
 
 .outro-qr {

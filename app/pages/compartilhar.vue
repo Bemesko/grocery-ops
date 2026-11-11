@@ -79,7 +79,7 @@ type Resposta =
       nota: { emitente: string; emitidaEm: string | null; aPagar: number; itens: number }
       candidatos: Candidato[]
     }
-  | { resultado: 'verificacao' | 'limite' | 'erro'; mensagem: string }
+  | { resultado: 'verificacao' | 'simples' | 'limite' | 'erro'; mensagem: string }
 
 const rota = useRoute()
 const estado = ref<'lendo' | 'qr' | 'escolher' | 'falhou'>('lendo')
