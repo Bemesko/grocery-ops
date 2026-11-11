@@ -4,7 +4,7 @@
 // chamada usa a nota do cache, sem consultar a SEFAZ de novo.
 export default defineEventHandler(async (event) => {
   const corpo = (await readBody(event)) ?? {}
-  const url = urlDaNfce(corpo.url) ?? erro(400, 'Esse QR não é de uma NFC-e de SC (sat.sef.sc.gov.br)')
+  const url = urlDaNfce(corpo.url) ?? erro(400, 'Esse link não é de uma NFC-e de SC (sat.sef.sc.gov.br)')
   const mercadoId = inteiro(corpo.mercadoId, 'mercado', { min: 1 })
   const mercadoNovo = texto(corpo.mercadoNovo, 'nome do mercado', { max: 60 })
   const sql = await useDb()
@@ -12,8 +12,14 @@ export default defineEventHandler(async (event) => {
   if (consulta.resultado !== 'ok') return { resultado: consulta.resultado, mensagem: consulta.mensagem }
   const nota = consulta.nota
 
+  // Já existe uma compra com esta nota: se ela só tinha a chave (lida do QR), recebe os itens.
   const [existente] = await sql`select id from compra where chave_nfce = ${nota.chave}`
-  if (existente) return { resultado: 'ok', compraId: existente.id as number, existente: true }
+  if (existente) {
+    const compraId = existente.id as number
+    const [lida] = await sql`select 1 from nfce_item where compra_id = ${compraId} limit 1`
+    if (!lida) await sql.begin((tx) => gravarNota(tx, compraId, nota, url))
+    return { resultado: 'ok', compraId, existente: true }
+  }
 
   let mercado: number | null = null
   if (mercadoId) {

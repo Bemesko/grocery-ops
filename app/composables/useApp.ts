@@ -54,6 +54,9 @@ export async function tentar<T>(acao: () => Promise<T>): Promise<T | undefined> 
 }
 
 /** Itens conhecidos (sugestões ao digitar e preços pré-preenchidos), compartilhados entre as telas. */
+/** Link de nota recebido pelo Compartilhar, levado de /compartilhar para Compras (compra nova). */
+export const useNotaCompartilhada = () => useState<string | null>('nota-compartilhada', () => null)
+
 export function useItens() {
   const itens = useState<ItemResumo[]>('itens', () => [])
   const recarregar = async () => {

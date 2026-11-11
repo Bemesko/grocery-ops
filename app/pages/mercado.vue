@@ -156,7 +156,8 @@
           <input id="nota" v-model="totalNotaTexto" class="cresce" inputmode="decimal" placeholder="0,00" />
           <button type="button" :disabled="lendoNota" @click="leitorNota = true">Ler nota</button>
         </div>
-        <p v-if="notaLida" class="suave">{{ notaLida }}</p>
+        <VerificarNota v-if="notaPendente" class="verificar-nota" :url="notaPendente" :ocupado="lendoNota" @link="lerNota" />
+        <p v-else-if="notaLida" class="suave">{{ notaLida }}</p>
         <p v-if="divergenciaPrevia !== null" class="suave">
           Diferença: {{ formatarPercentual(divergenciaPrevia, 1) }}
           <span :class="Math.abs(divergenciaPrevia) <= 0.05 ? 'ok' : 'ruim'">
@@ -383,6 +384,8 @@ const divergenciaPrevia = computed(() => {
 const leitorNota = ref(false)
 const lendoNota = ref(false)
 const notaLida = ref<string | null>(null)
+/** Link do QR esperando a verificação no navegador. */
+const notaPendente = ref<string | null>(null)
 
 async function lerNota(url: string) {
   leitorNota.value = false
@@ -395,9 +398,14 @@ async function lerNota(url: string) {
   lendoNota.value = false
   if (!resposta) return
   if (resposta.resultado === 'ok') {
+    notaPendente.value = null
     totalNotaTexto.value = dinheiroParaCampo(resposta.conferencia.aPagar)
     const n = resposta.conferencia.linhas.length
     notaLida.value = `Nota lida: ${n} ${n === 1 ? 'linha' : 'linhas'}. Você confere os itens depois de finalizar.`
+  } else if (resposta.resultado === 'verificacao' && resposta.conferencia.url && ehLinkDoQr(resposta.conferencia.url)) {
+    // O link do QR fica guardado na compra: se a pessoa finalizar antes, a compra mostra o
+    // mesmo painel.
+    notaPendente.value = resposta.conferencia.url
   } else {
     notaLida.value = resposta.mensagem
   }
@@ -551,5 +559,9 @@ async function comecar(mercadoId: number) {
 .acoes {
   justify-content: flex-end;
   margin-top: 1rem;
+}
+
+.verificar-nota {
+  margin-top: 0.75rem;
 }
 </style>

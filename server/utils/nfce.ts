@@ -17,23 +17,15 @@ export type Consulta =
   | { resultado: Exclude<ResultadoLeitura, 'ok'>; mensagem: string }
 
 const MENSAGENS = {
-  verificacao: 'A SEFAZ pediu uma verificação de segurança para esta nota. Abra a nota no navegador para ver os itens.',
+  verificacao: 'A SEFAZ pede uma verificação de segurança: abra a nota no navegador e traga o link da página da nota.',
   limite: 'A SEFAZ limitou as consultas por alguns minutos. Tente de novo mais tarde.',
   desconhecida: 'A página da nota não veio no formato esperado.',
 } as const
 
-/** Link do QR → URL da SEFAZ-SC (só esse host), ou null. */
+/** Texto do QR, colado ou compartilhado → URL da SEFAZ-SC (só esse host), ou null. */
 export function urlDaNfce(texto: unknown): string | null {
-  if (typeof texto !== 'string' || texto.length > 2000) return null
-  try {
-    const url = new URL(texto.trim())
-    if (url.hostname.toLowerCase() !== HOST || !['http:', 'https:'].includes(url.protocol)) return null
-    url.protocol = 'https:'
-    url.hash = ''
-    return url.toString()
-  } catch {
-    return null
-  }
+  const url = urlNfceDoTexto(texto)
+  return url && new URL(url).hostname.toLowerCase() === HOST ? url : null
 }
 
 const cache = new Map<string, { em: number; consulta: Consulta }>()
@@ -70,6 +62,8 @@ async function buscarPagina(inicial: string): Promise<{ html: string; url: strin
 }
 
 export async function consultarNfce(url: string): Promise<Consulta> {
+  // O link do QR sempre cai na verificação: nem consulta (o limite por IP é curto).
+  if (ehLinkDoQr(url)) return { resultado: 'verificacao', mensagem: MENSAGENS.verificacao }
   const guardada = cache.get(url)
   if (guardada && Date.now() - guardada.em <= VALIDADE_CACHE) return guardada.consulta
   const consulta = await chamadaExterna('nfce.consulta', { 'server.address': HOST }, async (span) => {
@@ -111,23 +105,39 @@ export async function gravarNota(tx: Sql, compraId: number, nota: NotaLida, url:
       values (${compraId}, ${l.ordem}, ${l.codigo}, ${l.descricao}, ${l.quantidade}, ${l.unidade}, ${l.unitario}, ${l.total})
     `
   }
-  await tx`
-    update mercado set cnpj = ${nota.cnpj}
-    where id = (select mercado_id from compra where id = ${compraId}) and cnpj is null
-      and not exists (select 1 from mercado where cnpj = ${nota.cnpj})
-  `
+  await aprenderCnpj(tx, compraId, nota.cnpj)
 }
 
 /** Nota que não pôde ser lida: guarda o link (e a chave, se o QR a traz) para tentar depois. */
 export async function guardarPendente(sql: Sql, compraId: number, url: string) {
-  const chave = lerChave(url)?.chave ?? null
+  const chave = lerChave(url)
+  if (chave) {
+    const [outra] = await sql`select id from compra where chave_nfce = ${chave.chave} and id <> ${compraId}`
+    if (outra) erro(409, 'Esta nota já está em outra compra', { compraId: outra.id })
+  }
   await sql`
-    update compra set nfce_url = ${url},
-      chave_nfce = case when ${chave}::text is not null
-        and not exists (select 1 from compra where chave_nfce = ${chave} and id <> ${compraId})
-        then ${chave} else chave_nfce end
+    update compra set nfce_url = ${url}, chave_nfce = coalesce(${chave?.chave ?? null}::text, chave_nfce)
     where id = ${compraId}
   `
+  // A chave traz o CNPJ do emitente: o mercado já fica conhecido, mesmo sem os itens.
+  if (chave) await aprenderCnpj(sql, compraId, chave.cnpj)
+}
+
+async function aprenderCnpj(sql: Sql, compraId: number, cnpj: string) {
+  await sql`
+    update mercado set cnpj = ${cnpj}
+    where id = (select mercado_id from compra where id = ${compraId}) and cnpj is null
+      and not exists (select 1 from mercado where cnpj = ${cnpj})
+  `
+}
+
+/** Chave que a compra espera (lida do QR) quando a nota ainda não foi lida; senão null. */
+export async function chaveEsperada(sql: Sql, compraId: number): Promise<string | null> {
+  const [c] = await sql`
+    select chave_nfce from compra
+    where id = ${compraId} and not exists (select 1 from nfce_item where compra_id = ${compraId})
+  `
+  return (c?.chaveNfce as string | null) ?? null
 }
 
 async function anotados(sql: Sql, compraId: number): Promise<(ItemAnotado & { precoCheio: number | null })[]> {

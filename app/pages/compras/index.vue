@@ -27,6 +27,16 @@
 
     <LeitorQr v-if="leitor" titulo="Adicionar compra pela nota" @lido="ler" @fechar="leitor = false" />
 
+    <div v-if="pendenteQr" class="fundo" @click.self="pendenteQr = null">
+      <div class="folha-mercado">
+        <h2>Adicionar compra pela nota</h2>
+        <VerificarNota :url="pendenteQr" :ocupado="lendo" @link="ler" />
+        <div class="linha acoes">
+          <button type="button" @click="pendenteQr = null">Fechar</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="escolha" class="fundo" @click.self="escolha = null">
       <form class="folha-mercado" @submit.prevent="criar">
         <h2>De qual mercado é esta nota?</h2>
@@ -58,6 +68,13 @@ const compras = ref<(Compra & { itens: number })[]>([])
 const carregado = ref(false)
 
 onMounted(async () => {
+  // Link recebido pelo Compartilhar (página /compartilhar), para virar uma compra nova.
+  const compartilhada = useNotaCompartilhada()
+  if (compartilhada.value) {
+    const url = compartilhada.value
+    compartilhada.value = null
+    ler(url)
+  }
   const r = await tentar(() => $fetch<(Compra & { itens: number })[]>('/api/compras?limite=200'))
   if (!r) return
   compras.value = r
@@ -78,6 +95,8 @@ interface RespostaNovaPelaNota {
 
 const leitor = ref(false)
 const lendo = ref(false)
+/** Link do QR esperando a verificação no navegador. */
+const pendenteQr = ref<string | null>(null)
 const mercados = ref<Mercado[]>([])
 const escolha = ref<{ url: string; emitente: string; cnpj: string; total: number; mercado: number | 'novo'; nome: string } | null>(
   null,
@@ -97,6 +116,12 @@ async function abrir(r: RespostaNovaPelaNota) {
 
 async function ler(url: string) {
   leitor.value = false
+  // O link do QR sempre pede a verificação da SEFAZ: guia a pessoa sem consultar.
+  if (ehLinkDoQr(url)) {
+    pendenteQr.value = urlNfceDoTexto(url)
+    return
+  }
+  pendenteQr.value = null
   const r = await enviar({ url })
   if (!r) return
   if (r.resultado === 'ok') return abrir(r)

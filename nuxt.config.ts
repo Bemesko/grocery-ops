@@ -37,6 +37,13 @@ export default defineNuxtConfig({
       start_url: '/',
       theme_color: '#2f855a',
       background_color: '#ffffff',
+      // Compartilhar → Grocery Ops (Android, app instalado): a página da NFC-e, depois da
+      // verificação da SEFAZ no navegador, chega em /compartilhar.
+      share_target: {
+        action: '/compartilhar',
+        method: 'GET',
+        params: { title: 'title', text: 'text', url: 'url' },
+      },
     },
     // Ícones gerados no build a partir de public/icon.svg (@vite-pwa/assets-generator).
     pwaAssets: {

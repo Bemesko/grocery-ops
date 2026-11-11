@@ -13,17 +13,22 @@
     </template>
 
     <template v-else-if="c.estado === 'pendente'">
-      <p class="aviso alerta">
-        {{
-          mensagem ??
-          'A última leitura não trouxe os itens: a SEFAZ pediu uma verificação de segurança ou limitou as consultas. Abra a nota no navegador ou tente de novo mais tarde.'
-        }}
-      </p>
-      <div class="linha botoes">
-        <a v-if="c.url" class="botao" :href="c.url" target="_blank" rel="noopener noreferrer">Abrir a nota</a>
-        <button type="button" class="botao" :disabled="lendo" @click="ler(c.url!)">Tentar de novo</button>
-        <button type="button" class="botao" :disabled="lendo" @click="leitor = true">Ler outro QR</button>
+      <div class="cartao">
+        <VerificarNota v-if="c.url && ehLinkDoQr(c.url)" :url="c.url" :ocupado="lendo" @link="ler" />
+        <template v-else>
+          <p class="aviso alerta">
+            {{
+              mensagem ??
+              'A última leitura não trouxe os itens: a SEFAZ limitou as consultas ou demorou para responder. Tente de novo mais tarde.'
+            }}
+          </p>
+          <div class="linha botoes">
+            <a v-if="c.url" class="botao" :href="c.url" target="_blank" rel="noopener noreferrer">Abrir a nota</a>
+            <button type="button" class="botao" :disabled="lendo" @click="ler(c.url!)">Tentar de novo</button>
+          </div>
+        </template>
       </div>
+      <button type="button" class="botao outro-qr" :disabled="lendo" @click="leitor = true">Ler outro QR</button>
     </template>
 
     <template v-else>
@@ -216,7 +221,8 @@ async function ler(url: string) {
     const n = resposta.conferencia.linhas.length
     avisar(`Nota lida: ${n} ${n === 1 ? 'linha' : 'linhas'}`)
     emit('mudou')
-  } else {
+  } else if (!(resposta.resultado === 'verificacao' && ehLinkDoQr(url))) {
+    // QR lido: o painel de verificação explica o próximo passo, sem aviso de erro.
     avisar(resposta.mensagem ?? 'Não consegui ler a nota', 'erro')
   }
 }
@@ -306,6 +312,10 @@ watch(
 .novo select {
   width: 100%;
   min-width: 0;
+}
+
+.outro-qr {
+  margin-top: 0.5rem;
 }
 
 .estado {
