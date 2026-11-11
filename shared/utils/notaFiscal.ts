@@ -43,6 +43,33 @@ export type PaginaNfce =
   | { tipo: 'limite' }
   | { tipo: 'desconhecida' }
 
+/**
+ * Primeiro link da SEFAZ-SC num texto qualquer: o Compartilhar do Android manda "título +
+ * link", e a colagem pode vir com texto junto. Sempre https.
+ */
+export function urlNfceDoTexto(texto: unknown): string | null {
+  if (typeof texto !== 'string' || texto.length > 4000) return null
+  const m = /https?:\/\/sat\.sef\.sc\.gov\.br\/[^\s"'<>]+/i.exec(texto)
+  if (!m) return null
+  try {
+    const url = new URL(m[0])
+    url.protocol = 'https:'
+    url.hash = ''
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Link impresso no QR (formato nacional `.../nfce/consulta?p=<chave>|...`). A SEFAZ-SC
+ * sempre o manda para uma verificação de segurança; só o link da página da nota, que o
+ * navegador recebe depois da verificação (`NFCe_Detalhes.aspx?rq=...`), o servidor lê.
+ */
+export function ehLinkDoQr(url: string): boolean {
+  return /\/nfce\/consulta\b[^#]*[?&]p=/i.test(url)
+}
+
 const ENTIDADES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
 
 function decodificar(texto: string): string {

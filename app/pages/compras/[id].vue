@@ -95,6 +95,10 @@
         <button type="submit">Salvar</button>
       </form>
 
+      <button v-if="r.compra.status !== 'em_andamento'" type="button" class="botao excluir" @click="excluir">
+        Excluir compra
+      </button>
+
       <FolhaPreco
         v-if="editando"
         :key="editando.id"
@@ -166,6 +170,19 @@ async function salvarNota() {
   }
 }
 
+async function excluir() {
+  const c = r.value?.compra
+  if (!c) return
+  const quando = new Date(`${c.data}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  if (!confirm(`Excluir a compra de ${c.mercado} em ${quando}? Os itens e a nota dela somem; a lista não muda. Não dá para desfazer.`)) {
+    return
+  }
+  const ok = await tentar(() => $fetch(`/api/compras/${id}`, { method: 'DELETE' }))
+  if (!ok) return
+  avisar('Compra excluída')
+  await navigateTo('/compras', { replace: true })
+}
+
 /** Preço atual na mesma base da variação: por kg/L/un quando as embalagens diferem. */
 function precoComparado(i: CompraItem) {
   return i.variacao?.porConteudo && i.embalagem ? precoBase(i.precoUnitario, i.embalagem) : i.precoUnitario
@@ -194,6 +211,12 @@ h1 {
 .clicavel {
   cursor: pointer;
 }
+.excluir {
+  margin-top: 2rem;
+  width: 100%;
+  color: var(--perigo);
+}
+
 .selos-linha {
   margin-top: 0.2rem;
 }

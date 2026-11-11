@@ -77,7 +77,7 @@ A lista é o que a casa precisa; a ida ao mercado leva só uma parte. Preparar a
 - "Finalizar": campo opcional "total da nota".
 - Resumo: total e diferença para o budget; divergência com a nota (se informada); top 5 itens que mais pesaram; itens fora da lista (quantidade e R$); maiores altas e baixas.
 - Itens comprados saem da lista; os não comprados ficam, e a seleção "nesta ida" é limpa.
-- Histórico de compras: lista de compras finalizadas, com detalhe e edição (corrigir preço ou quantidade depois).
+- Histórico de compras: lista de compras finalizadas, com detalhe e edição (corrigir preço ou quantidade depois). "Excluir compra" apaga uma compra finalizada, com os itens e a nota dela; a lista não muda e não dá para desfazer (a compra em andamento se cancela).
 - Nota fiscal: ver "Nota fiscal (NFC-e)".
 
 ### Nota fiscal (NFC-e)
@@ -85,7 +85,11 @@ A lista é o que a casa precisa; a ida ao mercado leva só uma parte. Preparar a
 - **Ler a nota**: pela câmera (QR) ou colando o link, ao finalizar a compra (preenche o total da nota) e no detalhe de qualquer compra. Em Compras, "Adicionar pela nota fiscal" cria uma compra finalizada só com a nota (ex.: uma parada rápida num mercadinho), no mercado do CNPJ da nota; CNPJ novo pergunta o mercado (um existente ou um novo com o nome do emitente).
 - **Conferência**: cada linha da nota aparece com o item anotado que o app achou para ela: "✓" (código do produto já confirmado neste mercado, ou nome bem parecido), "confira" (parecido) ou "não anotado". Dá para trocar o par, fazer a linha entrar na compra como um item (existente ou novo) ou deixá-la de fora. Itens anotados que não estão na nota podem sair da compra.
 - **Ao confirmar**: vale a quantidade e o preço da nota. A página da SEFAZ só traz o desconto no total: se há desconto e o preço anotado é menor que o unitário da nota, o anotado fica e o da nota vira preço cheio. A embalagem lida da descrição (`500ML`, `5KG`) preenche a da linha e a habitual do item quando estão vazias. O total da nota é o "valor a pagar". O par código do produto → item fica guardado por mercado e casa sozinho na próxima nota.
-- **Quando a nota não pode ser lida**: a SEFAZ-SC às vezes pede uma verificação de segurança (captcha) que o servidor não resolve. O app avisa, guarda o link ("Tentar de novo", "Abrir a nota" no navegador) e o total continua podendo ser digitado. A SEFAZ também limita consultas por IP: o app faz uma consulta por leitura, nunca repete sozinho e guarda o que leu (reabrir a conferência não consulta de novo).
+- **Verificação da SEFAZ**: o QR impresso é o link nacional `.../nfce/consulta?p=<chave>|...`, e a SEFAZ-SC sempre o manda para uma verificação de segurança (Cloudflare Turnstile) que só um navegador de verdade passa. Depois dela, o navegador abre a página da nota (`NFCe_Detalhes.aspx?rq=...`), e esse link o servidor lê. Por isso, ao ler o QR o app não consulta a SEFAZ: guarda a chave (que já dá o CNPJ do mercado e evita nota duplicada) e mostra o passo a passo:
+  1. "Abrir a nota": abre o link do QR no navegador, onde a pessoa passa a verificação.
+  2. Com os itens na tela, devolver o link ao app: no Android, Compartilhar → Grocery Ops (com o app instalado); no iPhone, copiar o link e tocar em "Colar link da nota". O app avisa se o link colado ainda é o do QR.
+- **Compartilhar → Grocery Ops** (`/compartilhar`): se uma compra já espera a nota (o QR foi lido nela), a nota entra direto; senão o app pergunta em qual compra ela entra (a em andamento e as finalizadas dos últimos 14 dias sem nota, as do mesmo mercado primeiro) ou cria uma compra só pela nota.
+- **Quando a nota não pode ser lida**: a SEFAZ também limita consultas por IP. O app faz uma consulta por leitura do link da página, nunca repete sozinho e guarda o que leu (reabrir a conferência não consulta de novo); "Tentar de novo" e "Abrir a nota" ficam na compra, e o total continua podendo ser digitado.
 - **Privacidade**: a página da nota traz CPF, nome e endereço do consumidor. Esse bloco é cortado antes da leitura e nada dele é guardado, logado ou enviado nos traces (o link da nota também não vai para logs e traces, porque abre a nota inteira).
 
 ### Gastos (analisar)

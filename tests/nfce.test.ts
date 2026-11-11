@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import { digitoChave, formatarChave, lerChave } from '../shared/utils/chaveNfce.ts'
-import { detectarPagina, lerPaginaNfce } from '../shared/utils/notaFiscal.ts'
+import { detectarPagina, ehLinkDoQr, lerPaginaNfce, urlNfceDoTexto } from '../shared/utils/notaFiscal.ts'
 
 const CHAVE = '42261111222333000181650010000012341123456788'
 const pagina = readFileSync(new URL('./fixtures/nfce-ficticia.html', import.meta.url), 'utf8')
@@ -66,5 +66,30 @@ describe('lerPaginaNfce', () => {
     assert.equal(detectarPagina('', 'https://sat.sef.sc.gov.br/tax.NET/SecurityVerify.aspx?rq=x'), 'verificacao')
     assert.equal(detectarPagina('O sistema detectou um número excessivo de requisições deste IP.'), 'limite')
     assert.equal(lerPaginaNfce('<html>outra coisa</html>').tipo, 'desconhecida')
+  })
+})
+
+describe('links da nota', () => {
+  const qr = `https://sat.sef.sc.gov.br/nfce/consulta?p=${CHAVE}|2|1|1|abcdef0123`
+  const pagina = 'https://sat.sef.sc.gov.br/tax.NET/Sat.DFe.NFCe.Web/Consultas/NFCe_Detalhes.aspx?rq=abc%2Fdef%3D%3D'
+
+  it('acha o link no texto do Compartilhar e em colagens com texto junto', () => {
+    assert.equal(urlNfceDoTexto(`NFCe - Detalhes ${pagina}`), pagina)
+    assert.equal(urlNfceDoTexto(`  ${pagina}
+`), pagina)
+    assert.equal(urlNfceDoTexto(pagina.replace('https:', 'http:')), pagina)
+  })
+
+  it('recusa outros hosts, inclusive parecidos', () => {
+    assert.equal(urlNfceDoTexto('https://exemplo.com/?u=x'), null)
+    assert.equal(urlNfceDoTexto('https://sat.sef.sc.gov.br.exemplo.com/nfce'), null)
+    assert.equal(urlNfceDoTexto(null), null)
+  })
+
+  it('separa o link do QR (sempre pede verificação) do link da página da nota', () => {
+    assert.equal(ehLinkDoQr(qr), true)
+    assert.equal(ehLinkDoQr(urlNfceDoTexto(qr)!), true)
+    assert.equal(ehLinkDoQr(pagina), false)
+    assert.equal(lerChave(urlNfceDoTexto(qr))?.chave, CHAVE)
   })
 })
