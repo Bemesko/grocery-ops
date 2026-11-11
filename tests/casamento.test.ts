@@ -12,7 +12,14 @@ import {
 } from '../shared/utils/casamento.ts'
 import type { LinhaNotaLida } from '../shared/utils/notaFiscal.ts'
 
-const linha = (ordem: number, descricao: string, unitario: number, quantidade = 1, codigo: string | null = null): LinhaNotaLida => ({
+const linha = (
+  ordem: number,
+  descricao: string,
+  unitario: number,
+  quantidade = 1,
+  codigo: string | null = null,
+  desconto = 0,
+): LinhaNotaLida => ({
   ordem,
   codigo,
   descricao,
@@ -20,6 +27,8 @@ const linha = (ordem: number, descricao: string, unitario: number, quantidade = 
   unidade: 'UN',
   unitario,
   total: Math.round(unitario * quantidade),
+  desconto,
+  ean: null,
 })
 
 const anotado = (id: number, nome: string, precoUnitario: number, extra: Partial<ItemAnotado> = {}): ItemAnotado => ({
@@ -53,8 +62,12 @@ describe('descrição da nota', () => {
 })
 
 describe('casarNota', () => {
-  it('água sem gás anotada a 1,49 casa com a linha de 1,69 da nota', () => {
-    const c = casarNota([linha(1, 'AGUA MINERAL MARCA X 500ML S GAS PET', 169)], [anotado(1, 'Água sem gás', 149)], new Map())
+  it('água sem gás anotada a 1,49 (pago) casa com a linha de 1,69 − 0,20 da nota', () => {
+    const c = casarNota(
+      [linha(1, 'AGUA MINERAL MARCA X 500ML S GAS PET', 169, 1, null, 20)],
+      [anotado(1, 'Água sem gás', 149)],
+      new Map(),
+    )
     assert.deepEqual(
       c.pares.map((p) => [p.ordem, p.compraItemId, p.nivel]),
       [[1, 1, 'certo']],
@@ -105,12 +118,29 @@ describe('casarNota', () => {
 })
 
 describe('precoConferido', () => {
-  it('com desconto na nota e anotado menor: anotado fica, o da nota vira preço cheio', () => {
-    assert.deepEqual(precoConferido(169, { precoUnitario: 149, precoCheio: null }, true), { preco: 149, precoCheio: 169 })
+  it('com desconto: pago exato no total, preço pago e o cheio da nota', () => {
+    assert.deepEqual(precoConferido({ unitario: 169, total: 169, desconto: 20, quantidade: 1 }), {
+      preco: 149,
+      precoCheio: 169,
+      total: 149,
+    })
+    assert.deepEqual(precoConferido({ unitario: 299, total: 897, desconto: 50, quantidade: 3 }), {
+      preco: 282,
+      precoCheio: 299,
+      total: 847,
+    })
   })
 
-  it('sem desconto, vale o preço da nota', () => {
-    assert.deepEqual(precoConferido(169, { precoUnitario: 149, precoCheio: null }, false), { preco: 169, precoCheio: null })
-    assert.deepEqual(precoConferido(169, null, true), { preco: 169, precoCheio: null })
+  it('sem desconto, vale o unitário; um cheio anotado maior fica', () => {
+    assert.deepEqual(precoConferido({ unitario: 459, total: 2754, desconto: 0, quantidade: 6 }), {
+      preco: 459,
+      precoCheio: null,
+      total: 2754,
+    })
+    assert.deepEqual(precoConferido({ unitario: 459, total: 459, desconto: 0, quantidade: 1 }, 599), {
+      preco: 459,
+      precoCheio: 599,
+      total: 459,
+    })
   })
 })

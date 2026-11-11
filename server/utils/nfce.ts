@@ -17,8 +17,13 @@ export type Consulta =
   | { resultado: Exclude<ResultadoLeitura, 'ok'>; mensagem: string }
 
 const MENSAGENS = {
-  verificacao: 'A SEFAZ pede uma verificação de segurança: abra a nota no navegador e traga o link da página da nota.',
+  verificacao: 'A SEFAZ pede uma verificação de segurança: abra a nota no navegador e traga o link da página detalhada.',
+  // O link da página detalhada vale poucos minutos; depois cai de novo na verificação.
+  expirado:
+    'Esse link da nota expirou (a SEFAZ só o aceita por alguns minutos). Abra a nota de novo, toque em "Ver NFC-e detalhada" e traga o link novo logo em seguida.',
   limite: 'A SEFAZ limitou as consultas por alguns minutos. Tente de novo mais tarde.',
+  simples:
+    'Esta é a página simples da nota, sem o desconto de cada item. Na página da nota, toque em "Ver NFC-e detalhada" e traga essa página.',
   desconhecida: 'A página da nota não veio no formato esperado.',
 } as const
 
@@ -34,8 +39,8 @@ function guardarNoCache(url: string, consulta: Consulta) {
   const agora = Date.now()
   for (const [chave, v] of cache) if (agora - v.em > VALIDADE_CACHE) cache.delete(chave)
   if (cache.size > 50) cache.delete(cache.keys().next().value!)
-  // Só guarda o que não muda: a nota lida, ou a verificação (tentar de novo logo é inútil).
-  if (consulta.resultado === 'ok' || consulta.resultado === 'verificacao') cache.set(url, { em: agora, consulta })
+  // Só guarda o que não muda: a nota lida, a página simples ou a verificação.
+  if (['ok', 'verificacao', 'simples'].includes(consulta.resultado)) cache.set(url, { em: agora, consulta })
 }
 
 /** Busca a página da nota seguindo redirecionamentos só dentro do host da SEFAZ. */
@@ -71,11 +76,12 @@ export async function consultarNfce(url: string): Promise<Consulta> {
       const { html, url: final } = await buscarPagina(url)
       const pagina = lerPaginaNfce(html, final)
       span.setAttribute('nfce.resultado', pagina.tipo)
-      if (pagina.tipo === 'nota') {
+      if (pagina.tipo === 'detalhada') {
         span.setAttribute('nfce.itens', pagina.nota.itens.length)
         return { resultado: 'ok', nota: pagina.nota } as Consulta
       }
       if (pagina.tipo === 'desconhecida') return { resultado: 'erro', mensagem: MENSAGENS.desconhecida } as Consulta
+      if (pagina.tipo === 'verificacao') return { resultado: 'verificacao', mensagem: MENSAGENS.expirado } as Consulta
       return { resultado: pagina.tipo, mensagem: MENSAGENS[pagina.tipo] } as Consulta
     } catch (e) {
       registrarErro(span, e)
@@ -101,8 +107,10 @@ export async function gravarNota(tx: Sql, compraId: number, nota: NotaLida, url:
   await tx`delete from nfce_item where compra_id = ${compraId}`
   for (const l of nota.itens) {
     await tx`
-      insert into nfce_item (compra_id, ordem, codigo, descricao, quantidade, unidade, unitario_centavos, total_centavos)
-      values (${compraId}, ${l.ordem}, ${l.codigo}, ${l.descricao}, ${l.quantidade}, ${l.unidade}, ${l.unitario}, ${l.total})
+      insert into nfce_item (compra_id, ordem, codigo, descricao, quantidade, unidade, unitario_centavos, total_centavos,
+        desconto_centavos, ean)
+      values (${compraId}, ${l.ordem}, ${l.codigo}, ${l.descricao}, ${l.quantidade}, ${l.unidade}, ${l.unitario}, ${l.total},
+        ${l.desconto}, ${l.ean})
     `
   }
   await aprenderCnpj(tx, compraId, nota.cnpj)
@@ -115,8 +123,12 @@ export async function guardarPendente(sql: Sql, compraId: number, url: string) {
     const [outra] = await sql`select id from compra where chave_nfce = ${chave.chave} and id <> ${compraId}`
     if (outra) erro(409, 'Esta nota já está em outra compra', { compraId: outra.id })
   }
+  // O link do QR não expira: guardado, ele fica (é por ele que "Abrir a nota" recomeça).
+  const qr = ehLinkDoQr(url)
   await sql`
-    update compra set nfce_url = ${url}, chave_nfce = coalesce(${chave?.chave ?? null}::text, chave_nfce)
+    update compra set
+      nfce_url = case when ${qr} or nfce_url is null or nfce_url !~ '/nfce/consulta' then ${url} else nfce_url end,
+      chave_nfce = coalesce(${chave?.chave ?? null}::text, chave_nfce)
     where id = ${compraId}
   `
   // A chave traz o CNPJ do emitente: o mercado já fica conhecido, mesmo sem os itens.
@@ -160,12 +172,18 @@ async function anotados(sql: Sql, compraId: number): Promise<(ItemAnotado & { pr
   }))
 }
 
-async function linhasDaNota(sql: Sql, compraId: number) {
+/**
+ * Linhas da nota da compra. Linhas lidas antes da página detalhada não têm o desconto: ele é
+ * zero se a nota não teve desconto, o desconto inteiro se a nota tem uma linha só, e senão
+ * fica desconhecido (null) até a página detalhada ser lida.
+ */
+async function linhasDaNota(sql: Sql, compraId: number, descontoNota: number | null) {
   const linhas = await sql`
     select ordem, codigo, descricao, quantidade, unidade, unitario_centavos as unitario,
-      total_centavos as total, compra_item_id
+      total_centavos as total, desconto_centavos as desconto, ean, compra_item_id
     from nfce_item where compra_id = ${compraId} order by ordem
   `
+  const semDesconto = (descontoNota ?? 0) === 0
   return linhas.map((l) => ({
     ordem: l.ordem as number,
     codigo: l.codigo as string | null,
@@ -174,6 +192,9 @@ async function linhasDaNota(sql: Sql, compraId: number) {
     unidade: l.unidade as string,
     unitario: l.unitario as number,
     total: l.total as number,
+    desconto:
+      (l.desconto as number | null) ?? (semDesconto ? 0 : linhas.length === 1 ? (descontoNota as number) : null),
+    ean: l.ean as string | null,
     compraItemId: l.compraItemId as number | null,
   }))
 }
@@ -185,7 +206,8 @@ export async function conferencia(sql: Sql, compraId: number): Promise<Conferenc
     from compra where id = ${compraId}
   `
   if (!c) erro(404, 'Compra não encontrada')
-  const linhas = await linhasDaNota(sql, compraId)
+  const desconto = c.descontoNotaCentavos as number | null
+  const linhas = await linhasDaNota(sql, compraId, desconto)
   const doApp = await anotados(sql, compraId)
   const conferida = Boolean(c.nfceConferidaEm) && linhas.length > 0
   let pares = new Map<number, { compraItemId: number; nivel: LinhaConferencia['nivel'] }>()
@@ -202,7 +224,6 @@ export async function conferencia(sql: Sql, compraId: number): Promise<Conferenc
     pares = new Map(casamento.pares.map((p) => [p.ordem, { compraItemId: p.compraItemId, nivel: p.nivel }]))
   }
   const usados = new Set([...pares.values()].map((p) => p.compraItemId))
-  const desconto = c.descontoNotaCentavos as number | null
   return {
     estado: linhas.length ? (conferida ? 'conferida' : 'lida') : c.nfceUrl ? 'pendente' : 'sem_nota',
     url: c.nfceUrl as string | null,
@@ -212,8 +233,10 @@ export async function conferencia(sql: Sql, compraId: number): Promise<Conferenc
     total: linhas.length ? linhas.reduce((s, l) => s + l.total, 0) : null,
     desconto,
     aPagar: linhas.length ? (c.totalNotaCentavos as number | null) : null,
+    precisaDetalhada: linhas.some((l) => l.desconto === null),
     linhas: linhas.map(({ compraItemId: _c, ...l }) => ({
       ...l,
+      pago: pagoNaLinha(l),
       embalagem: unidadeDaNota(l.unidade) === 'un' ? embalagemDaDescricao(l.descricao) : null,
       nomeSugerido: (l.codigo && nomeDoCodigo.get(l.codigo)) || nomeDaDescricao(l.descricao),
       compraItemId: pares.get(l.ordem)?.compraItemId ?? null,
@@ -231,10 +254,13 @@ export async function confirmarConferencia(sql: Sql, compraId: number, decisoes:
   await sql.begin(async (tx) => {
     const [c] = await tx`select mercado_id, desconto_nota_centavos from compra where id = ${compraId}`
     if (!c) erro(404, 'Compra não encontrada')
-    const linhas = new Map((await linhasDaNota(tx, compraId)).map((l) => [l.ordem, l]))
-    if (!linhas.size) erro(409, 'A compra não tem nota lida')
+    const lidas = await linhasDaNota(tx, compraId, c.descontoNotaCentavos as number | null)
+    if (!lidas.length) erro(409, 'A compra não tem nota lida')
+    if (lidas.some((l) => l.desconto === null)) {
+      erro(409, 'Falta o desconto de cada item: traga a página detalhada da nota ("Ver NFC-e detalhada")')
+    }
+    const linhas = new Map(lidas.map((l) => [l.ordem, l]))
     const doApp = new Map((await anotados(tx, compraId)).map((a) => [a.id, a]))
-    const temDesconto = ((c.descontoNotaCentavos as number | null) ?? 0) > 0
     const usados = new Set<number>()
     await tx`update nfce_item set compra_item_id = null where compra_id = ${compraId}`
 
@@ -250,11 +276,11 @@ export async function confirmarConferencia(sql: Sql, compraId: number, decisoes:
         const anotado = doApp.get(d.compraItemId)
         if (!anotado) erro(400, 'Item anotado não pertence a esta compra')
         if (usados.has(anotado.id) || remover.includes(anotado.id)) erro(400, `${anotado.nome} está em duas linhas`)
-        const { preco, precoCheio } = precoConferido(linha.unitario, anotado, temDesconto)
+        const { preco, precoCheio, total } = precoConferido(linha, anotado.precoCheio)
         const embalagem = un === 'un' ? (anotado.embalagem ?? daNota) : null
         await tx`
           update compra_item set unidade = ${un}, quantidade = ${linha.quantidade}, preco_unitario_centavos = ${preco},
-            preco_cheio_centavos = ${precoCheio}, total_centavos = ${totalItem(linha.quantidade, preco)},
+            preco_cheio_centavos = ${precoCheio}, total_centavos = ${total},
             embalagem_qtd = ${embalagem?.qtd ?? null}, embalagem_unidade = ${embalagem?.unidade ?? null}
           where id = ${anotado.id}
         `
@@ -267,11 +293,12 @@ export async function confirmarConferencia(sql: Sql, compraId: number, decisoes:
           categoriaId: d.categoriaId ?? null,
           unidade: un,
         })
+        const { preco, precoCheio, total } = precoConferido(linha)
         const [criado] = await tx`
-          insert into compra_item (compra_id, item_id, unidade, quantidade, preco_unitario_centavos, da_lista,
-            total_centavos, embalagem_qtd, embalagem_unidade)
-          values (${compraId}, ${item.id}, ${un}, ${linha.quantidade}, ${linha.unitario}, false,
-            ${totalItem(linha.quantidade, linha.unitario)}, ${daNota?.qtd ?? null}, ${daNota?.unidade ?? null})
+          insert into compra_item (compra_id, item_id, unidade, quantidade, preco_unitario_centavos, preco_cheio_centavos,
+            da_lista, total_centavos, embalagem_qtd, embalagem_unidade)
+          values (${compraId}, ${item.id}, ${un}, ${linha.quantidade}, ${preco}, ${precoCheio}, false,
+            ${total}, ${daNota?.qtd ?? null}, ${daNota?.unidade ?? null})
           returning id
         `
         compraItemId = criado!.id as number

@@ -5,7 +5,7 @@
 // pelo código do produto na loja.
 import { similaridade } from './busca.ts'
 import { lerEmbalagem, mesmoConteudo, type Embalagem } from './embalagem.ts'
-import type { LinhaNotaLida } from './notaFiscal.ts'
+import { pagoNaLinha, type LinhaNotaLida } from './notaFiscal.ts'
 import { limparNome, normalizarNome } from './texto.ts'
 
 export interface ItemAnotado {
@@ -138,7 +138,9 @@ export function pontuar(linha: LinhaNotaLida, anotado: ItemAnotado): number {
   let pontos = doNome * 0.7 + daVariante * 0.1
   const embalagem = embalagemDaDescricao(linha.descricao)
   if (embalagem && anotado.embalagem) pontos += mesmoConteudo(embalagem, anotado.embalagem) ? 0.1 : -0.1
-  const diferenca = Math.abs(linha.unitario - anotado.precoUnitario) / Math.max(1, linha.unitario, anotado.precoUnitario)
+  // A pessoa anota o preço pago (com desconto): compara com o unitário pago da nota.
+  const pago = Math.round(pagoNaLinha(linha) / linha.quantidade)
+  const diferenca = Math.abs(pago - anotado.precoUnitario) / Math.max(1, pago, anotado.precoUnitario)
   if (diferenca <= 0.02) pontos += 0.2
   else if (diferenca <= 0.2) pontos += 0.1
   if (Math.abs(linha.quantidade - anotado.quantidade) < 0.001) pontos += 0.05
@@ -199,17 +201,17 @@ export function unidadeDaNota(unidade: string): 'un' | 'kg' {
 }
 
 /**
- * Preço da linha depois da conferência. Vale o cobrado na nota; mas a página só traz o
- * desconto no total: se há desconto e o anotado é menor que o unitário da nota, o anotado
- * (o preço com desconto) fica e o da nota vira o preço cheio.
+ * Preço da linha depois da conferência, pelo que a nota cobrou: pago = valor − desconto
+ * (exato, vai para o total da linha); preço = pago ÷ quantidade; preço cheio = unitário da
+ * nota quando houve desconto. Sem desconto, um preço cheio anotado maior que o da nota fica
+ * (uma promoção que a nota não mostra como desconto).
  */
 export function precoConferido(
-  unitarioNota: number,
-  anotado: { precoUnitario: number; precoCheio: number | null } | null,
-  notaTemDesconto: boolean,
-): { preco: number; precoCheio: number | null } {
-  if (anotado && notaTemDesconto && anotado.precoUnitario < unitarioNota) {
-    return { preco: anotado.precoUnitario, precoCheio: unitarioNota }
-  }
-  return { preco: unitarioNota, precoCheio: anotado?.precoCheio && anotado.precoCheio > unitarioNota ? anotado.precoCheio : null }
+  linha: { unitario: number; total: number; desconto: number | null; quantidade: number },
+  precoCheioAnotado: number | null = null,
+): { preco: number; precoCheio: number | null; total: number } {
+  const total = pagoNaLinha(linha)
+  const preco = Math.round(total / linha.quantidade)
+  if ((linha.desconto ?? 0) > 0) return { preco, precoCheio: linha.unitario, total }
+  return { preco, precoCheio: precoCheioAnotado && precoCheioAnotado > preco ? precoCheioAnotado : null, total }
 }

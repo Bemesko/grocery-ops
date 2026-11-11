@@ -160,4 +160,14 @@ export const migracoes: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    // Desconto e código de barras de cada linha da NFC-e, lidos da página detalhada. Linhas
+    // lidas antes (da página simples) ficam com o desconto nulo: desconhecido.
+    id: '004_nfce_desconto',
+    sql: /* sql */ `
+      alter table nfce_item
+        add column desconto_centavos int check (desconto_centavos >= 0),
+        add column ean text;
+    `,
+  },
 ]
