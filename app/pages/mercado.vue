@@ -410,13 +410,10 @@ async function lerNota(url: string) {
     totalNotaTexto.value = dinheiroParaCampo(resposta.conferencia.aPagar)
     const n = resposta.conferencia.linhas.length
     notaLida.value = `Nota lida: ${n} ${n === 1 ? 'linha' : 'linhas'}. Você confere os itens depois de finalizar.`
-  } else if (
-    resposta.conferencia.url &&
-    ((resposta.resultado === 'verificacao' && ehLinkDoQr(resposta.conferencia.url)) || resposta.resultado === 'simples')
-  ) {
-    // O link fica guardado na compra: se a pessoa finalizar antes, a compra mostra o mesmo
-    // painel. Na página simples, a mensagem diz para trazer a detalhada.
-    notaLida.value = resposta.resultado === 'simples' ? resposta.mensagem : null
+  } else if (resposta.resultado === 'verificacao' && resposta.conferencia.url && ehLinkDoQr(resposta.conferencia.url)) {
+    // O link do QR fica guardado na compra: se a pessoa finalizar antes, a compra mostra o
+    // mesmo painel. Um link da página detalhada que o app não abre traz a mensagem dizendo isso.
+    notaLida.value = ehLinkDoQr(url) ? null : resposta.mensagem
     notaPendente.value = resposta.conferencia.url
   } else {
     notaLida.value = resposta.mensagem

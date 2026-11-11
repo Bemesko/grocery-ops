@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   casarNota,
+  descontosPelosAnotados,
   embalagemDaDescricao,
   nomeDaDescricao,
   palavrasDaDescricao,
@@ -142,5 +143,35 @@ describe('precoConferido', () => {
       precoCheio: 599,
       total: 459,
     })
+  })
+})
+
+describe('descontosPelosAnotados', () => {
+  const l = (ordem: number, total: number, desconto: number | null = null, quantidade = 1) => ({ ordem, total, quantidade, desconto })
+
+  it('água 1,69 anotada a 1,49, nota com 0,20 de desconto: tudo explicado', () => {
+    const r = descontosPelosAnotados([l(1, 169)], () => ({ precoUnitario: 149 }), 20)
+    assert.deepEqual([...r.descontos], [[1, 20]])
+    assert.equal(r.semItem, 0)
+  })
+
+  it('só uma linha anotada com desconto: a outra fica sem desconto e o resto sobra, sem distribuir', () => {
+    const r = descontosPelosAnotados([l(1, 169), l(2, 739)], (o) => (o === 1 ? { precoUnitario: 149 } : null), 50)
+    assert.deepEqual([...r.descontos], [
+      [1, 20],
+      [2, 0],
+    ])
+    assert.equal(r.semItem, 30)
+  })
+
+  it('anotado acima do preço da nota: sem desconto (vale a nota)', () => {
+    const r = descontosPelosAnotados([l(1, 459, null, 2)], () => ({ precoUnitario: 499 }), 0)
+    assert.deepEqual([...r.descontos], [[1, 0]])
+  })
+
+  it('desconto que veio da nota (página detalhada) não muda pelo anotado', () => {
+    const r = descontosPelosAnotados([l(1, 338, 40, 2)], () => ({ precoUnitario: 100 }), 40)
+    assert.deepEqual([...r.descontos], [[1, 40]])
+    assert.equal(r.semItem, 0)
   })
 })

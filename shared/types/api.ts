@@ -154,8 +154,10 @@ export interface LinhaConferencia {
   unitario: number
   /** Valor da linha antes do desconto. */
   total: number
-  /** Desconto da linha; null = desconhecido (falta a página detalhada). */
-  desconto: number | null
+  /** Desconto da linha como veio da nota; null = a nota não diz (página simples). */
+  descontoNota: number | null
+  /** Desconto da linha: o da nota ou, sem ele, o tirado do preço anotado do par. */
+  desconto: number
   /** Pago na linha: total − desconto. */
   pago: number
   ean: string | null
@@ -178,14 +180,17 @@ export interface ConferenciaNota {
   total: number | null
   desconto: number | null
   aPagar: number | null
-  /** Alguma linha sem o desconto: a confirmação espera a página detalhada. */
-  precisaDetalhada: boolean
+  /**
+   * Desconto da nota que nenhuma linha explica (positivo ou negativo): não é distribuído,
+   * fica como diferença entre o total da nota e os itens.
+   */
+  descontoSemItem: number
   linhas: LinhaConferencia[]
   /** Itens anotados (compra_item) sem par na nota. */
   anotadosSemPar: number[]
 }
 
-export type ResultadoLeitura = 'ok' | 'verificacao' | 'simples' | 'limite' | 'erro'
+export type ResultadoLeitura = 'ok' | 'verificacao' | 'limite' | 'erro'
 
 export interface RespostaLeituraNota {
   resultado: ResultadoLeitura

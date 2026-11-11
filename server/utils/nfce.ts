@@ -17,13 +17,11 @@ export type Consulta =
   | { resultado: Exclude<ResultadoLeitura, 'ok'>; mensagem: string }
 
 const MENSAGENS = {
-  verificacao: 'A SEFAZ pede uma verificação de segurança: abra a nota no navegador e traga o link da página detalhada.',
-  // O link da página detalhada vale poucos minutos; depois cai de novo na verificação.
-  expirado:
-    'Esse link da nota expirou (a SEFAZ só o aceita por alguns minutos). Abra a nota de novo, toque em "Ver NFC-e detalhada" e traga o link novo logo em seguida.',
+  verificacao: 'A SEFAZ pede uma verificação de segurança: abra a nota no navegador e traga o link da página da nota.',
+  // A página detalhada só abre para o navegador que acabou de passar pela verificação.
+  detalhada:
+    'O app não consegue abrir a página detalhada (a SEFAZ só a mostra para o navegador que passou pela verificação). Traga o link da página da nota, sem tocar em "Ver NFC-e detalhada".',
   limite: 'A SEFAZ limitou as consultas por alguns minutos. Tente de novo mais tarde.',
-  simples:
-    'Esta é a página simples da nota, sem o desconto de cada item. Na página da nota, toque em "Ver NFC-e detalhada" e traga essa página.',
   desconhecida: 'A página da nota não veio no formato esperado.',
 } as const
 
@@ -39,8 +37,8 @@ function guardarNoCache(url: string, consulta: Consulta) {
   const agora = Date.now()
   for (const [chave, v] of cache) if (agora - v.em > VALIDADE_CACHE) cache.delete(chave)
   if (cache.size > 50) cache.delete(cache.keys().next().value!)
-  // Só guarda o que não muda: a nota lida, a página simples ou a verificação.
-  if (['ok', 'verificacao', 'simples'].includes(consulta.resultado)) cache.set(url, { em: agora, consulta })
+  // Só guarda o que não muda: a nota lida ou a verificação.
+  if (consulta.resultado === 'ok' || consulta.resultado === 'verificacao') cache.set(url, { em: agora, consulta })
 }
 
 /** Busca a página da nota seguindo redirecionamentos só dentro do host da SEFAZ. */
@@ -76,12 +74,16 @@ export async function consultarNfce(url: string): Promise<Consulta> {
       const { html, url: final } = await buscarPagina(url)
       const pagina = lerPaginaNfce(html, final)
       span.setAttribute('nfce.resultado', pagina.tipo)
-      if (pagina.tipo === 'detalhada') {
+      if (pagina.tipo === 'nota') {
+        span.setAttribute('nfce.pagina', pagina.pagina)
         span.setAttribute('nfce.itens', pagina.nota.itens.length)
         return { resultado: 'ok', nota: pagina.nota } as Consulta
       }
       if (pagina.tipo === 'desconhecida') return { resultado: 'erro', mensagem: MENSAGENS.desconhecida } as Consulta
-      if (pagina.tipo === 'verificacao') return { resultado: 'verificacao', mensagem: MENSAGENS.expirado } as Consulta
+      if (pagina.tipo === 'verificacao') {
+        const mensagem = /Nfe_DetalheCert/i.test(url) ? MENSAGENS.detalhada : MENSAGENS.verificacao
+        return { resultado: 'verificacao', mensagem } as Consulta
+      }
       return { resultado: pagina.tipo, mensagem: MENSAGENS[pagina.tipo] } as Consulta
     } catch (e) {
       registrarErro(span, e)
@@ -224,6 +226,12 @@ export async function conferencia(sql: Sql, compraId: number): Promise<Conferenc
     pares = new Map(casamento.pares.map((p) => [p.ordem, { compraItemId: p.compraItemId, nivel: p.nivel }]))
   }
   const usados = new Set([...pares.values()].map((p) => p.compraItemId))
+  const anotadoPorId = new Map(doApp.map((a) => [a.id, a]))
+  const { descontos, semItem } = descontosPelosAnotados(
+    linhas,
+    (ordem) => anotadoPorId.get(pares.get(ordem)?.compraItemId ?? 0) ?? null,
+    desconto ?? 0,
+  )
   return {
     estado: linhas.length ? (conferida ? 'conferida' : 'lida') : c.nfceUrl ? 'pendente' : 'sem_nota',
     url: c.nfceUrl as string | null,
@@ -233,10 +241,12 @@ export async function conferencia(sql: Sql, compraId: number): Promise<Conferenc
     total: linhas.length ? linhas.reduce((s, l) => s + l.total, 0) : null,
     desconto,
     aPagar: linhas.length ? (c.totalNotaCentavos as number | null) : null,
-    precisaDetalhada: linhas.some((l) => l.desconto === null),
-    linhas: linhas.map(({ compraItemId: _c, ...l }) => ({
+    descontoSemItem: linhas.length ? semItem : 0,
+    linhas: linhas.map(({ compraItemId: _c, desconto: descontoNota, ...l }) => ({
       ...l,
-      pago: pagoNaLinha(l),
+      descontoNota,
+      desconto: descontos.get(l.ordem) ?? 0,
+      pago: l.total - (descontos.get(l.ordem) ?? 0),
       embalagem: unidadeDaNota(l.unidade) === 'un' ? embalagemDaDescricao(l.descricao) : null,
       nomeSugerido: (l.codigo && nomeDoCodigo.get(l.codigo)) || nomeDaDescricao(l.descricao),
       compraItemId: pares.get(l.ordem)?.compraItemId ?? null,
@@ -256,11 +266,17 @@ export async function confirmarConferencia(sql: Sql, compraId: number, decisoes:
     if (!c) erro(404, 'Compra não encontrada')
     const lidas = await linhasDaNota(tx, compraId, c.descontoNotaCentavos as number | null)
     if (!lidas.length) erro(409, 'A compra não tem nota lida')
-    if (lidas.some((l) => l.desconto === null)) {
-      erro(409, 'Falta o desconto de cada item: traga a página detalhada da nota ("Ver NFC-e detalhada")')
-    }
     const linhas = new Map(lidas.map((l) => [l.ordem, l]))
     const doApp = new Map((await anotados(tx, compraId)).map((a) => [a.id, a]))
+    // Desconto de cada linha: o da nota ou o tirado do preço anotado no par escolhido. O que
+    // sobra não é distribuído (fica como diferença entre a nota e os itens).
+    const parDe = new Map(decisoes.filter((d) => d.compraItemId).map((d) => [d.ordem, d.compraItemId!]))
+    const { descontos } = descontosPelosAnotados(
+      lidas,
+      (ordem) => doApp.get(parDe.get(ordem) ?? 0) ?? null,
+      (c.descontoNotaCentavos as number | null) ?? 0,
+    )
+    const comDesconto = (l: (typeof lidas)[number]) => ({ ...l, desconto: descontos.get(l.ordem) ?? 0 })
     const usados = new Set<number>()
     await tx`update nfce_item set compra_item_id = null where compra_id = ${compraId}`
 
@@ -276,7 +292,7 @@ export async function confirmarConferencia(sql: Sql, compraId: number, decisoes:
         const anotado = doApp.get(d.compraItemId)
         if (!anotado) erro(400, 'Item anotado não pertence a esta compra')
         if (usados.has(anotado.id) || remover.includes(anotado.id)) erro(400, `${anotado.nome} está em duas linhas`)
-        const { preco, precoCheio, total } = precoConferido(linha, anotado.precoCheio)
+        const { preco, precoCheio, total } = precoConferido(comDesconto(linha), anotado.precoCheio)
         const embalagem = un === 'un' ? (anotado.embalagem ?? daNota) : null
         await tx`
           update compra_item set unidade = ${un}, quantidade = ${linha.quantidade}, preco_unitario_centavos = ${preco},
@@ -293,7 +309,7 @@ export async function confirmarConferencia(sql: Sql, compraId: number, decisoes:
           categoriaId: d.categoriaId ?? null,
           unidade: un,
         })
-        const { preco, precoCheio, total } = precoConferido(linha)
+        const { preco, precoCheio, total } = precoConferido(comDesconto(linha))
         const [criado] = await tx`
           insert into compra_item (compra_id, item_id, unidade, quantidade, preco_unitario_centavos, preco_cheio_centavos,
             da_lista, total_centavos, embalagem_qtd, embalagem_unidade)
