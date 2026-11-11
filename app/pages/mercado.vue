@@ -152,7 +152,11 @@
           Total no app: <strong class="num">{{ formatarDinheiro(totalCarrinho) }}</strong>
         </p>
         <label for="nota">Total da nota (opcional, para conferir)</label>
-        <input id="nota" v-model="totalNotaTexto" inputmode="decimal" placeholder="0,00" />
+        <div class="linha">
+          <input id="nota" v-model="totalNotaTexto" class="cresce" inputmode="decimal" placeholder="0,00" />
+          <button type="button" :disabled="lendoNota" @click="leitorNota = true">Ler nota</button>
+        </div>
+        <p v-if="notaLida" class="suave">{{ notaLida }}</p>
         <p v-if="divergenciaPrevia !== null" class="suave">
           Diferença: {{ formatarPercentual(divergenciaPrevia, 1) }}
           <span :class="Math.abs(divergenciaPrevia) <= 0.05 ? 'ok' : 'ruim'">
@@ -165,6 +169,7 @@
         </div>
       </form>
     </div>
+    <LeitorQr v-if="leitorNota" @lido="lerNota" @fechar="leitorNota = false" />
   </main>
 </template>
 
@@ -177,6 +182,7 @@ import type {
   PendenteMercado,
   PrecoReferencia,
   RespostaCompraAtual,
+  RespostaLeituraNota,
   Unidade,
 } from '../../shared/types/api'
 import type { Embalagem } from '../../shared/utils/embalagem'
@@ -371,6 +377,31 @@ const divergenciaPrevia = computed(() => {
   const nota = parseDinheiro(totalNotaTexto.value)
   return nota ? (totalCarrinho.value - nota) / nota : null
 })
+
+// Lê a NFC-e antes de finalizar: preenche o total; a conferência dos itens fica no
+// detalhe da compra, que abre depois de finalizar.
+const leitorNota = ref(false)
+const lendoNota = ref(false)
+const notaLida = ref<string | null>(null)
+
+async function lerNota(url: string) {
+  leitorNota.value = false
+  if (!compra.value) return
+  lendoNota.value = true
+  const id = compra.value.id
+  const resposta = await tentar(() =>
+    $fetch<RespostaLeituraNota>(`/api/compras/${id}/nfce`, { method: 'POST', body: { url } }),
+  )
+  lendoNota.value = false
+  if (!resposta) return
+  if (resposta.resultado === 'ok') {
+    totalNotaTexto.value = dinheiroParaCampo(resposta.conferencia.aPagar)
+    const n = resposta.conferencia.linhas.length
+    notaLida.value = `Nota lida: ${n} ${n === 1 ? 'linha' : 'linhas'}. Você confere os itens depois de finalizar.`
+  } else {
+    notaLida.value = resposta.mensagem
+  }
+}
 
 async function finalizar() {
   if (!compra.value) return

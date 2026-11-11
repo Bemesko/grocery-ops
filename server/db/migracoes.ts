@@ -122,4 +122,42 @@ export const migracoes: { id: string; sql: string }[] = [
           check ((embalagem_qtd is null) = (embalagem_unidade is null));
     `,
   },
+  {
+    // NFC-e: leitura da nota pelo QR e conferência com o que foi anotado. Nada do bloco
+    // "Consumidor" da nota (CPF, nome, endereço) é guardado.
+    id: '003_nfce',
+    sql: /* sql */ `
+      alter table mercado add column cnpj text unique check (cnpj ~ '^[0-9]{14}$');
+
+      alter table compra
+        add column nfce_url text,
+        add column nfce_emitente text,
+        add column nfce_emitida_em timestamptz,
+        add column desconto_nota_centavos int check (desconto_nota_centavos >= 0),
+        add column nfce_conferida_em timestamptz;
+
+      -- Linhas da nota como vieram; compra_item_id é o par confirmado na conferência.
+      create table nfce_item (
+        id serial primary key,
+        compra_id int not null references compra (id) on delete cascade,
+        ordem int not null,
+        codigo text,
+        descricao text not null,
+        quantidade numeric(10, 3) not null check (quantidade > 0),
+        unidade text not null,
+        unitario_centavos int not null check (unitario_centavos >= 0),
+        total_centavos int not null check (total_centavos >= 0),
+        compra_item_id int references compra_item (id) on delete set null,
+        unique (compra_id, ordem)
+      );
+
+      -- Código do produto na loja → item do app, aprendido nas conferências confirmadas.
+      create table item_codigo (
+        mercado_id int not null references mercado (id) on delete cascade,
+        codigo text not null,
+        item_id int not null references item (id) on delete cascade,
+        primary key (mercado_id, codigo)
+      );
+    `,
+  },
 ]

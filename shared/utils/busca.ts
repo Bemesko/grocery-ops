@@ -1,6 +1,6 @@
 // Busca de nomes de item para as sugestões ao digitar. Roda no cliente: a casa tem
 // centenas de itens, não milhares.
-import { normalizarNome } from './texto'
+import { normalizarNome } from './texto.ts'
 
 function levenshtein(a: string, b: string): number {
   if (a === b) return 0

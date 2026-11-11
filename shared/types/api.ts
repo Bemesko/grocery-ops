@@ -143,6 +143,60 @@ export interface ResumoCompra {
   divergencia: number | null
 }
 
+export interface LinhaConferencia {
+  ordem: number
+  codigo: string | null
+  descricao: string
+  quantidade: number
+  /** Unidade comercial da nota (UN, KG, PCT…). */
+  unidade: string
+  unitario: number
+  total: number
+  embalagem: Embalagem | null
+  /** Nome sugerido para criar um item a partir desta linha. */
+  nomeSugerido: string
+  /** Par da linha: confirmado (gravado), certo ou sugerido (calculados), ou nenhum. */
+  compraItemId: number | null
+  nivel: 'confirmado' | 'certo' | 'sugerido' | null
+}
+
+/** Nota fiscal de uma compra e o casamento das linhas com os itens anotados. */
+export interface ConferenciaNota {
+  /** sem_nota: nada lido; pendente: o link está guardado, mas a nota não pôde ser lida. */
+  estado: 'sem_nota' | 'pendente' | 'lida' | 'conferida'
+  url: string | null
+  chave: string | null
+  emitente: string | null
+  emitidaEm: string | null
+  total: number | null
+  desconto: number | null
+  aPagar: number | null
+  linhas: LinhaConferencia[]
+  /** Itens anotados (compra_item) sem par na nota. */
+  anotadosSemPar: number[]
+}
+
+export type ResultadoLeitura = 'ok' | 'verificacao' | 'limite' | 'erro'
+
+export interface RespostaLeituraNota {
+  resultado: ResultadoLeitura
+  mensagem: string | null
+  conferencia: ConferenciaNota
+}
+
+/** Uma decisão da conferência para uma linha da nota. */
+export interface DecisaoLinha {
+  ordem: number
+  /** Par com um item anotado. */
+  compraItemId?: number
+  /** Linha que não foi anotada: entra na compra como este item (existente ou novo). */
+  itemId?: number
+  nome?: string
+  categoriaId?: number
+  /** Fica de fora da compra (ex.: sacola). */
+  ignorar?: boolean
+}
+
 export interface GastoItem {
   itemId: number
   nome: string

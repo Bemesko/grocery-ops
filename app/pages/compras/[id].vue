@@ -10,6 +10,7 @@
       <p class="suave">
         {{ r.itens.length }} itens
         <template v-if="r.compra.origem === 'importacao'"> · importada</template>
+        <template v-else-if="r.compra.origem === 'nfce'"> · pela nota fiscal</template>
       </p>
 
       <div class="cartao destaque">
@@ -36,14 +37,18 @@
         </p>
       </div>
 
-      <h2>O que mais pesou</h2>
-      <ul class="lista">
-        <li v-for="i in r.topItens" :key="i.id">
-          <span class="cresce">{{ i.nome }}</span>
-          <span class="suave num">{{ formatarPercentual(i.total / Math.max(1, r.compra.total)) }}</span>
-          <span class="num">{{ formatarDinheiro(i.total) }}</span>
-        </li>
-      </ul>
+      <ConferenciaNota :compra-id="id" :anotados="r.itens" @mudou="carregar" />
+
+      <template v-if="r.topItens.length">
+        <h2>O que mais pesou</h2>
+        <ul class="lista">
+          <li v-for="i in r.topItens" :key="i.id">
+            <span class="cresce">{{ i.nome }}</span>
+            <span class="suave num">{{ formatarPercentual(i.total / Math.max(1, r.compra.total)) }}</span>
+            <span class="num">{{ formatarDinheiro(i.total) }}</span>
+          </li>
+        </ul>
+      </template>
 
       <template v-if="r.foraDaLista.quantidade">
         <h2>Fora da lista</h2>
