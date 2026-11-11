@@ -215,3 +215,32 @@ export function precoConferido(
   if ((linha.desconto ?? 0) > 0) return { preco, precoCheio: linha.unitario, total }
   return { preco, precoCheio: precoCheioAnotado && precoCheioAnotado > preco ? precoCheioAnotado : null, total }
 }
+
+/**
+ * Desconto de cada linha na conferência. A página simples da NFC-e só traz o desconto no
+ * total; a pessoa anota no mercado o preço já descontado. Então:
+ * - desconto já conhecido (página detalhada, nota sem desconto, uma linha só): fica;
+ * - desconhecido, com item anotado: valor da linha − anotado × quantidade (entre 0 e o
+ *   valor da linha; anotado acima do preço da nota = sem desconto);
+ * - desconhecido, sem item anotado: 0 (preço da nota).
+ * O que sobra (`semItem`, positivo ou negativo) não é distribuído: fica como diferença
+ * entre o total da nota e os itens.
+ */
+export function descontosPelosAnotados(
+  linhas: { ordem: number; total: number; quantidade: number; desconto: number | null }[],
+  anotadoDe: (ordem: number) => { precoUnitario: number } | null,
+  descontoNota: number,
+): { descontos: Map<number, number>; semItem: number } {
+  const descontos = new Map<number, number>()
+  for (const l of linhas) {
+    if (l.desconto !== null) {
+      descontos.set(l.ordem, l.desconto)
+      continue
+    }
+    const anotado = anotadoDe(l.ordem)
+    const pagoAnotado = anotado ? Math.round(anotado.precoUnitario * l.quantidade) : l.total
+    descontos.set(l.ordem, Math.min(l.total, Math.max(0, l.total - pagoAnotado)))
+  }
+  const soma = [...descontos.values()].reduce((s, d) => s + d, 0)
+  return { descontos, semItem: descontoNota - soma }
+}

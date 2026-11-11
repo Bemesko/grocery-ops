@@ -84,7 +84,7 @@ onMounted(async () => {
 // Compra só pela nota: o servidor cria a compra no mercado do CNPJ da nota; se o CNPJ é
 // novo, pergunta o mercado e a segunda chamada usa a nota já lida (sem nova consulta).
 interface RespostaNovaPelaNota {
-  resultado: 'ok' | 'verificacao' | 'simples' | 'limite' | 'erro' | 'escolher_mercado'
+  resultado: 'ok' | 'verificacao' | 'limite' | 'erro' | 'escolher_mercado'
   mensagem?: string
   compraId?: number
   existente?: boolean
@@ -127,12 +127,6 @@ async function ler(url: string) {
   const r = await enviar({ url })
   if (!r) return
   if (r.resultado === 'ok') return abrir(r)
-  if (r.resultado === 'simples') {
-    // Página simples: mostra o passo a passo de novo, pedindo a detalhada.
-    pendenteQr.value = urlNfceDoTexto(url)
-    pendenteMensagem.value = r.mensagem ?? null
-    return
-  }
   if (r.resultado === 'escolher_mercado') {
     mercados.value = (await tentar(() => $fetch<Mercado[]>('/api/mercados'))) ?? []
     escolha.value = { url, emitente: r.emitente!, cnpj: r.cnpj!, total: r.total!, mercado: 'novo', nome: r.emitente! }

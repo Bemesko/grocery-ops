@@ -15,7 +15,7 @@
     <template v-else-if="c.estado === 'pendente'">
       <div class="cartao">
         <VerificarNota
-          v-if="c.url && (ehLinkDoQr(c.url) || ehPaginaSimples(c.url))"
+          v-if="c.url && ehLinkDoQr(c.url)"
           :url="c.url"
           :ocupado="lendo"
           :mensagem="mensagem"
@@ -53,15 +53,6 @@
         </div>
       </div>
 
-      <div v-if="c.precisaDetalhada && c.url" class="cartao detalhada">
-        <VerificarNota
-          :url="c.url"
-          :ocupado="lendo"
-          mensagem="Esta nota tem desconto, mas a página lida não diz de qual item. Traga a página detalhada para conferir."
-          @link="ler"
-        />
-      </div>
-
       <template v-if="c.estado === 'conferida' && !editando">
         <ul class="lista">
           <li v-for="l in c.linhas" :key="l.ordem">
@@ -72,6 +63,7 @@
             <span class="num">{{ formatarDinheiro(l.pago) }}</span>
           </li>
         </ul>
+        <p v-if="c.descontoSemItem" class="suave">{{ textoSemItem(c.descontoSemItem) }}</p>
         <div class="linha botoes">
           <button type="button" class="botao" @click="editar">Refazer conferência</button>
           <button type="button" class="botao" :disabled="lendo" @click="leitor = true">Ler outra nota</button>
@@ -87,12 +79,12 @@
           <li v-for="l in c.linhas" :key="l.ordem" class="linha-nota">
             <div class="linha">
               <span class="cresce descricao-nota">{{ l.descricao }}</span>
-              <span class="num">{{ formatarDinheiro(l.pago) }}</span>
+              <span class="num">{{ formatarDinheiro(pagoDe(l)) }}</span>
             </div>
             <div class="suave">
               {{ quantidadeNota(l) }} × {{ formatarDinheiro(precoPago(l)) }}
-              <template v-if="l.desconto">
-                (de {{ formatarDinheiro(l.unitario) }}, −{{ formatarDinheiro(l.desconto) }})
+              <template v-if="descontoDe(l)">
+                (de {{ formatarDinheiro(l.unitario) }}, −{{ formatarDinheiro(descontoDe(l)) }})
               </template>
               <template v-if="l.embalagem"> · {{ formatarEmbalagem(l.embalagem) }}</template>
               <span v-if="l.nivel === 'sugerido' && escolhas[l.ordem]?.tipo === `ci:${l.compraItemId}`" class="selo neutro estado">confira</span>
@@ -130,10 +122,15 @@
           </ul>
         </template>
 
+        <p v-if="c.desconto" class="suave">
+          Desconto da nota: {{ formatarDinheiro(c.desconto) }}.
+          <template v-if="descontos.semItem">{{ textoSemItem(descontos.semItem) }}</template>
+        </p>
+
         <p v-if="problema" class="aviso perigo">{{ problema }}</p>
         <div class="linha botoes fim">
           <button v-if="c.estado === 'conferida'" type="button" class="botao" @click="editando = false">Voltar</button>
-          <button type="submit" class="botao primario" :disabled="salvando || c.precisaDetalhada">
+          <button type="submit" class="botao primario" :disabled="salvando">
             Confirmar conferência
           </button>
         </div>
@@ -183,9 +180,38 @@ function nomeAnotado(id: number | null) {
   return id ? (props.anotados.find((a) => a.id === id)?.nome ?? null) : null
 }
 
+// Desconto de cada linha recalculado com os pares escolhidos na tela: o da nota ou, sem ele,
+// o tirado do preço anotado (o servidor faz a mesma conta ao confirmar).
+const descontos = computed(() => {
+  const linhas = c.value?.linhas ?? []
+  const anotadoPorId = new Map(props.anotados.map((a) => [a.id, a]))
+  return descontosPelosAnotados(
+    linhas.map((l) => ({ ...l, desconto: l.descontoNota })),
+    (ordem) => {
+      const tipo = escolhas[ordem]?.tipo ?? ''
+      return tipo.startsWith('ci:') ? (anotadoPorId.get(Number(tipo.slice(3))) ?? null) : null
+    },
+    c.value?.desconto ?? 0,
+  )
+})
+
+function descontoDe(l: LinhaConferencia) {
+  return descontos.value.descontos.get(l.ordem) ?? 0
+}
+
+function pagoDe(l: LinhaConferencia) {
+  return l.total - descontoDe(l)
+}
+
 /** Preço pago da unidade: o que a pessoa anota. */
 function precoPago(l: LinhaConferencia) {
-  return Math.round(l.pago / l.quantidade)
+  return Math.round(pagoDe(l) / l.quantidade)
+}
+
+function textoSemItem(valor: number) {
+  return valor > 0
+    ? `${formatarDinheiro(valor)} de desconto sem item: fica como diferença entre a nota e os itens.`
+    : `Os preços anotados somam ${formatarDinheiro(-valor)} a mais de desconto que a nota: fica como diferença entre a nota e os itens.`
 }
 
 function quantidadeNota(l: LinhaConferencia) {
@@ -246,7 +272,7 @@ async function ler(url: string) {
     const n = resposta.conferencia.linhas.length
     avisar(`Nota lida: ${n} ${n === 1 ? 'linha' : 'linhas'}`)
     emit('mudou')
-  } else if (resposta.resultado !== 'simples' && !(resposta.resultado === 'verificacao' && ehLinkDoQr(url))) {
+  } else if (!(resposta.resultado === 'verificacao' && ehLinkDoQr(url))) {
     // QR lido: o painel de verificação explica o próximo passo, sem aviso de erro.
     avisar(resposta.mensagem ?? 'Não consegui ler a nota', 'erro')
   }
@@ -337,10 +363,6 @@ watch(
 .novo select {
   width: 100%;
   min-width: 0;
-}
-
-.detalhada {
-  margin-bottom: 0.75rem;
 }
 
 .outro-qr {

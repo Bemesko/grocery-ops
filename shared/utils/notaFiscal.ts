@@ -14,7 +14,7 @@ export interface LinhaNotaLida {
   unitario: number
   /** Valor da linha antes do desconto (quantidade × unitário). */
   total: number
-  /** Desconto da linha; null = desconhecido (linha lida antes da página detalhada). */
+  /** Desconto da linha; null = a nota não diz (página simples com desconto e várias linhas). */
   desconto: number | null
   /** Código de barras (EAN/GTIN), quando a nota traz. */
   ean: string | null
@@ -61,11 +61,6 @@ export function urlNfceDoTexto(texto: unknown): string | null {
  */
 export function ehLinkDoQr(url: string): boolean {
   return /\/nfce\/consulta\b[^#]*[?&]p=/i.test(url)
-}
-
-/** Página simples da nota (NFCe_Detalhes.aspx): sem desconto por item; o app pede a detalhada. */
-export function ehPaginaSimples(url: string): boolean {
-  return /\/NFCe_Detalhes\.aspx/i.test(url)
 }
 
 /** Pago na linha: valor − desconto (desconto desconhecido conta como zero). */
