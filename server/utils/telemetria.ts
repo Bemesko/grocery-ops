@@ -1,6 +1,7 @@
 // Telemetria do lado do app. O SDK é ligado fora do bundle (otel/instrumentation.mjs);
 // aqui só se usa a API, que encontra o SDK pelo registro global. Sem SDK, tudo vira no-op.
-import { SpanKind, SpanStatusCode, metrics, trace, type Span } from '@opentelemetry/api'
+import { SpanKind, SpanStatusCode, context, metrics, trace, type Span } from '@opentelemetry/api'
+import { suppressTracing } from '@opentelemetry/core'
 import type { Sql } from './db'
 
 const tracer = trace.getTracer('grocery-ops')
@@ -37,6 +38,28 @@ export function registrarErro(span: Span | undefined, erro: unknown) {
   if (!span) return
   span.recordException(erro instanceof Error ? erro : String(erro))
   span.setStatus({ code: SpanStatusCode.ERROR, message: erro instanceof Error ? erro.message : String(erro) })
+}
+
+/**
+ * Span manual em volta de uma chamada externa cujo URL não pode ir para os traces (o link
+ * da NFC-e dá acesso à nota inteira, com os dados do consumidor). A instrumentação
+ * automática do fetch fica suprimida dentro de `fn`; os atributos vêm só de quem chama.
+ */
+export async function chamadaExterna<T>(
+  nome: string,
+  atributos: Record<string, string | number>,
+  fn: (span: Span) => Promise<T>,
+): Promise<T> {
+  return tracer.startActiveSpan(nome, { kind: SpanKind.CLIENT, attributes: atributos }, async (span) => {
+    try {
+      return await context.with(suppressTracing(context.active()), () => fn(span))
+    } catch (erro) {
+      registrarErro(span, erro)
+      throw erro
+    } finally {
+      span.end()
+    }
+  })
 }
 
 // --- Spans do Postgres -------------------------------------------------------------

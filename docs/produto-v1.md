@@ -27,7 +27,7 @@ Etapas, na ordem do uso: **Anotar → Preparar a ida → No mercado → Fechar a
 | Anotar | item genérico com sugestão de nomes já usados; categoria lembrada; prioritário em 1 toque; sincronização entre celulares | | | sugestão de itens pelo padrão de recompra |
 | Preparar a ida | seleção "nesta ida"; estimativa por mercado lado a lado; budget restante | comparação por tamanho de embalagem (R$/kg, R$/L) | assistente "encaixar no budget" | |
 | No mercado | lista por corredor; registrar preço com 1 toque se não mudou; R$/kg + peso; ↑↓; item fora da lista; total vs budget; transbordo | | ordem de corredores por mercado | foto da etiqueta; código de barras; offline |
-| Fechar a compra | total da nota; resumo da compra | leitura do QR da NFC-e (SC) e conferência do total | importar os itens da NFC-e e casar com os itens do app | outros estabelecimentos pagos com VR |
+| Fechar a compra | total da nota; resumo da compra | leitura do QR da NFC-e (SC), conferência do total e casamento dos itens da nota com os anotados; compra só pela nota | | outros estabelecimentos pagos com VR |
 | Analisar | gasto do mês; itens que mais pesaram; gasto por categoria; histórico de preço do item; importação de histórico (CSV) | | evolução de preço; inflação da cesta | |
 
 ## Telas da v1
@@ -78,6 +78,15 @@ A lista é o que a casa precisa; a ida ao mercado leva só uma parte. Preparar a
 - Resumo: total e diferença para o budget; divergência com a nota (se informada); top 5 itens que mais pesaram; itens fora da lista (quantidade e R$); maiores altas e baixas.
 - Itens comprados saem da lista; os não comprados ficam, e a seleção "nesta ida" é limpa.
 - Histórico de compras: lista de compras finalizadas, com detalhe e edição (corrigir preço ou quantidade depois).
+- Nota fiscal: ver "Nota fiscal (NFC-e)".
+
+### Nota fiscal (NFC-e)
+
+- **Ler a nota**: pela câmera (QR) ou colando o link, ao finalizar a compra (preenche o total da nota) e no detalhe de qualquer compra. Em Compras, "Adicionar pela nota fiscal" cria uma compra finalizada só com a nota (ex.: uma parada rápida num mercadinho), no mercado do CNPJ da nota; CNPJ novo pergunta o mercado (um existente ou um novo com o nome do emitente).
+- **Conferência**: cada linha da nota aparece com o item anotado que o app achou para ela: "✓" (código do produto já confirmado neste mercado, ou nome bem parecido), "confira" (parecido) ou "não anotado". Dá para trocar o par, fazer a linha entrar na compra como um item (existente ou novo) ou deixá-la de fora. Itens anotados que não estão na nota podem sair da compra.
+- **Ao confirmar**: vale a quantidade e o preço da nota. A página da SEFAZ só traz o desconto no total: se há desconto e o preço anotado é menor que o unitário da nota, o anotado fica e o da nota vira preço cheio. A embalagem lida da descrição (`500ML`, `5KG`) preenche a da linha e a habitual do item quando estão vazias. O total da nota é o "valor a pagar". O par código do produto → item fica guardado por mercado e casa sozinho na próxima nota.
+- **Quando a nota não pode ser lida**: a SEFAZ-SC às vezes pede uma verificação de segurança (captcha) que o servidor não resolve. O app avisa, guarda o link ("Tentar de novo", "Abrir a nota" no navegador) e o total continua podendo ser digitado. A SEFAZ também limita consultas por IP: o app faz uma consulta por leitura, nunca repete sozinho e guarda o que leu (reabrir a conferência não consulta de novo).
+- **Privacidade**: a página da nota traz CPF, nome e endereço do consumidor. Esse bloco é cortado antes da leitura e nada dele é guardado, logado ou enviado nos traces (o link da nota também não vai para logs e traces, porque abre a nota inteira).
 
 ### Gastos (analisar)
 
@@ -153,7 +162,7 @@ Dinheiro em centavos (inteiro) no banco e na API. Quantidade com 3 casas (peso e
 
 ```text
 categoria      id, nome (único), ordem
-mercado        id, nome (único), tipo [atacado|varejo], criado_em
+mercado        id, nome (único), tipo [atacado|varejo], cnpj (único, aprendido da nota), criado_em
 item           id, nome, nome_normalizado (único: minúsculo, sem acento, espaços colapsados),
                categoria_id, unidade [un|kg], embalagem_qtd, embalagem_unidade [g|kg|ml|l|un] (habitual),
                criado_em
@@ -162,11 +171,14 @@ lista_item     id, item_id, quantidade (texto livre, opcional), prioritario, nes
                -- único: um lista_item aberto por item
 compra         id, mercado_id, status [em_andamento|finalizada|cancelada],
                data (dia da compra), iniciada_em, finalizada_em,
-               total_nota_centavos, chave_nfce (único, v1.1),
-               origem [app|importacao|nfce], importacao_id
+               total_nota_centavos, chave_nfce (único), nfce_url, nfce_emitente, nfce_emitida_em,
+               desconto_nota_centavos, nfce_conferida_em, origem [app|importacao|nfce], importacao_id
 compra_item    id, compra_id, item_id, lista_item_id (quando veio da lista), variante, unidade [un|kg], quantidade numeric(10,3),
                preco_unitario_centavos, preco_cheio_centavos, da_lista (nulo = desconhecido),
                total_centavos, embalagem_qtd, embalagem_unidade, criado_em
+nfce_item      id, compra_id, ordem, codigo (do produto na loja), descricao, quantidade, unidade (da nota),
+               unitario_centavos, total_centavos, compra_item_id (par confirmado)
+item_codigo    mercado_id, codigo, item_id  -- pares confirmados, por mercado
 saldo_ajuste   id, em (timestamp), saldo_centavos
 configuracao   chave, valor (jsonb)  -- dia_preferido: 0 = segunda … 6 = domingo
 importacao     id, arquivo, criada_em
@@ -202,8 +214,8 @@ Linhas com o mesmo `data` + `mercado` (+ `compra`) formam uma compra. Fluxo: env
 
 ## Fora da v1
 
-- **v1.1**: NFC-e de SC. Primeiro um spike: confirmar que a página de consulta da SEFAZ-SC (a URL do QR code) pode ser lida pelo servidor, sem captcha. Depois: ler o QR com a câmera (o PWA precisa de HTTPS, que o ingress do Tailscale fornece), guardar a chave e conferir o total.
-- **v2**: importar os itens da NFC-e e casar com os itens do app (as descrições da nota são abreviadas; a embalagem costuma estar nelas); ordem de corredores por mercado; assistente "encaixar no budget"; evolução de preço e inflação da cesta (por kg/L quando houver embalagem).
+- **v1.1** (feita): NFC-e de SC, ver "Nota fiscal (NFC-e)". O spike (nov/2026) mostrou que a página do QR (`NFCe_Detalhes.aspx?rq=…`) abre no servidor com um GET simples, no layout nacional do DANFE NFC-e; algumas notas caem numa verificação Cloudflare Turnstile (`SecurityVerify.aspx`), e a consulta pela chave de acesso (`/nfce/consulta`) também cai nela para essas notas; o XML exige login no SAT; a consulta pública limita requisições por IP.
+- **v2**: ordem de corredores por mercado; assistente "encaixar no budget"; evolução de preço e inflação da cesta (por kg/L quando houver embalagem).
 - **v3**: sugestão de itens pelo padrão de recompra; foto da etiqueta e código de barras; outros estabelecimentos pagos com VR (padaria, açougue, sacolão); modo offline.
 
 ## Decisões técnicas

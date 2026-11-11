@@ -48,6 +48,7 @@ export async function juntarItem(tx: Sql, origem: number, destino: number) {
   const encontrados = await tx`select id from item where id in ${tx([origem, destino])}`
   if (encontrados.length !== 2) erro(404, 'Item não encontrado')
   await tx`update compra_item set item_id = ${destino} where item_id = ${origem}`
+  await tx`update item_codigo set item_id = ${destino} where item_id = ${origem}`
   const [abertoOrigem] = await tx`select id, prioritario, nesta_ida from lista_item where item_id = ${origem} and status = 'aberto'`
   const [abertoDestino] = await tx`select id from lista_item where item_id = ${destino} and status = 'aberto'`
   if (abertoOrigem && abertoDestino) {
