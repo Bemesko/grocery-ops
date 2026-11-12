@@ -5,8 +5,8 @@ metadata:
 type: Opaque
 stringData:
     HA_URL: ENC[AES256_GCM,data:UYuTwlfBTogzIYMjrkbCczJ71eqSu5rEkjovvWcH1h50CSK8mGUANZ+InKGucqmd6EyvpDUkWOJ/vD8=,iv:+i82AQMyxwgvAT1p2e2aXS20sdPX0VzW4x2O1uO4mHg=,tag:AaCWqV7PO35PV/xNX/sn3w==,type:str]
-    HA_TOKEN: ENC[AES256_GCM,data:6JoFRj8FY9JXIqW602ryZ08=,iv:9r6pvn4Y/HHGJM/XfAw8bi0MoyuDkB0nNWmFH8MYGiQ=,tag:pd98PznDwVtQrO4jIgTLlw==,type:str]
-    HA_TODO_ENTITY: ENC[AES256_GCM,data:Hk+CZNr9J5LqdVPJFLZpLXy3zCc1ZA==,iv:h43B5pegnKbqwmn0YYkcU0Of6UuI03gQRmIDdlfRvZo=,tag:BN6ZI4MoHgHJ+ldp/ithdA==,type:str]
+    HA_TOKEN: ENC[AES256_GCM,data:EsZAi8wA5mqOG1hd56MsNKRHKbt21uTIlpEMOqmfKcdSLkT2oWQkCXZThsc+9hbNdrhiomBTnFFEm08FLtUrmtHkhtY0GB6OZfcodvpw1x+mJwgiEYRL90kRN3QmpManCPmvA3dEapw6BX8hIDQNNlWadCx+t/m5jioaUOdH6okzQ6ARdTFofRoJ6u+sm5fFrXKtG+GoDA570KCIJTWeRcJaS+YxtWJT+ByofPAmGBWp23y5nOol,iv:dXtGhw9V7RX1iQOG1njmP1WZaz1n2N5zgDcUW8HQlbQ=,tag:vH7i/IywCpU0fOC1BnqzRg==,type:str]
+    HA_TODO_ENTITY: ENC[AES256_GCM,data:dQwTQpFOHr5Hp5Oth340T87wflQBNPWGuFNNApFXDmI30wU4nilT5nypPh4/,iv:/lVy7BjvRmEJjLOZDeTlVYPtf2yPXX0YpO3qWyDwn/s=,tag:vNUXSIkR9IRlEI7ddHchnA==,type:str]
 sops:
     age:
         - enc: |
@@ -27,7 +27,7 @@ sops:
             k+v1xpoHKYkKP0Df4zQVpFwDDyhRNKmYm7WT+2dTI7d5xP7qO+GcXA==
             -----END AGE ENCRYPTED FILE-----
           recipient: age1kn09fr57m2vz4jhpw6e8k9qswm0sl702h6kecry5rn0kpjyyuf4sf33yde
-    lastmodified: "2026-11-12T11:12:35Z"
-    mac: ENC[AES256_GCM,data:mxXG0IZ2Ti/5jY/IWZ5BeoCia0L+D9dw1qbRAs2OM0wBPeRGShF8J16JuCLhGEdTNBy8+/rX7yP/bI+IUyqS1x9+vS+F2VARY8QRLXWo2z+zIJpGWaHF6GUeqgAZt0/Vql8S/fkQSjBRMfvs7YSBwsMrT7qoJ3vIRobdqTDL2nw=,iv:cDUMv43fjhOTaRDISIt47IekTD3RsPO74pT8h6dnw9I=,tag:Mw4GOPhCOlK1w1p+VD9vlw==,type:str]
+    lastmodified: "2026-11-12T11:35:52Z"
+    mac: ENC[AES256_GCM,data:pgUQrvaM5gGnT6Z1Kq8r8RELs0Gc7pdIXVr8FVFCeJU47UH6JzG0MNqtJpGAlV9dFIkickJhTukz+hB5M+8u1y9+GgUFp3HORHGVqqzXcKROQ0s1t+n4GQg8wONmTDEDEXJhdcwj7z8z+rsbrNp6ODufEYrdqAukGcKD2nfAP4E=,iv:bJgfAtQTEMo5vjtxdetl3o0NcdgA9HfrJgMK48OagNo=,tag:oJfmN2n1aDCnAOzO9FrijQ==,type:str]
     unencrypted_regex: ^(apiVersion|metadata|kind|type)$
     version: 3.13.3
