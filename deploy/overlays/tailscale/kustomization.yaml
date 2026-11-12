@@ -8,6 +8,10 @@ resources:
   - ingress.yaml
 components:
   - ../../components/postgres-cnpg
+# Secret grocery-ops-alexa (lista de compras da Alexa via Home Assistant), criptografado com
+# sops (alexa.sops.yaml): veja o README ("Lista da Alexa").
+generators:
+  - secret-generator.yaml
 configMapGenerator:
   - name: grocery-ops-otel
     literals:

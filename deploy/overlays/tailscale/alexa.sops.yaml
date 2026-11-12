@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: grocery-ops-alexa
+type: Opaque
+stringData:
+    HA_URL: ENC[AES256_GCM,data:UYuTwlfBTogzIYMjrkbCczJ71eqSu5rEkjovvWcH1h50CSK8mGUANZ+InKGucqmd6EyvpDUkWOJ/vD8=,iv:+i82AQMyxwgvAT1p2e2aXS20sdPX0VzW4x2O1uO4mHg=,tag:AaCWqV7PO35PV/xNX/sn3w==,type:str]
+    HA_TOKEN: ENC[AES256_GCM,data:6JoFRj8FY9JXIqW602ryZ08=,iv:9r6pvn4Y/HHGJM/XfAw8bi0MoyuDkB0nNWmFH8MYGiQ=,tag:pd98PznDwVtQrO4jIgTLlw==,type:str]
+    HA_TODO_ENTITY: ENC[AES256_GCM,data:Hk+CZNr9J5LqdVPJFLZpLXy3zCc1ZA==,iv:h43B5pegnKbqwmn0YYkcU0Of6UuI03gQRmIDdlfRvZo=,tag:BN6ZI4MoHgHJ+ldp/ithdA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBQVlFYeHhHMXdXWVRZZWV0
+            MGQrTUxDK1RMcThhbktEVnBHTngrZnoyNFZrClFqdy9uZjhuVHRVWCtZT0NKdkpp
+            MlQxb1kvSjFoME1oMEd0ZHdjWEd1MEUKLS0tIDRFdlR6WlRvR21pN2p6bGdTeFpj
+            VjhkTkhuSVBpOEUwV2pPb2pjN2I3bVUKyDPu0a80/z7f2brpd8Exx8WhLpyqCKQd
+            3jg+2p9Z3Dx3fDs1w8UPZ0mgXeJ8aaT++DjAEKqrc5ItYaQGZJsHug==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1fskvnv59jkjddglqvsllm3d54qtd6xl0u00utexhd0t0vddlfp8qe2plxs
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBudDdzQWptYnA5eVhqdW1I
+            MUVPVnAvejRQYkhXVlY0L1JsQ1AycWdEVUdzCmtGdC81WnFmRFlFeDA2NThCM1RL
+            aUxBUDhLaXd2R1ppUFloWFV2bzM1bWMKLS0tIERzRklFMnpnSDhqd3BiZGdiM2tZ
+            Sm8wamtQaUI1QmQ4aWV4R1luSnZRc2cKtLtQB89YvUEfN8eY/dW63Zz6wuzVXXJX
+            k+v1xpoHKYkKP0Df4zQVpFwDDyhRNKmYm7WT+2dTI7d5xP7qO+GcXA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1kn09fr57m2vz4jhpw6e8k9qswm0sl702h6kecry5rn0kpjyyuf4sf33yde
+    lastmodified: "2026-11-12T11:12:35Z"
+    mac: ENC[AES256_GCM,data:mxXG0IZ2Ti/5jY/IWZ5BeoCia0L+D9dw1qbRAs2OM0wBPeRGShF8J16JuCLhGEdTNBy8+/rX7yP/bI+IUyqS1x9+vS+F2VARY8QRLXWo2z+zIJpGWaHF6GUeqgAZt0/Vql8S/fkQSjBRMfvs7YSBwsMrT7qoJ3vIRobdqTDL2nw=,iv:cDUMv43fjhOTaRDISIt47IekTD3RsPO74pT8h6dnw9I=,tag:Mw4GOPhCOlK1w1p+VD9vlw==,type:str]
+    unencrypted_regex: ^(apiVersion|metadata|kind|type)$
+    version: 3.13.3

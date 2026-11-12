@@ -19,6 +19,9 @@ export const metricas = {
   itensCarrinho: meter.createCounter('grocery.cart.items', {
     description: 'Itens registrados no carrinho (from_list: veio da lista ou não)',
   }),
+  itensAlexa: meter.createCounter('grocery.alexa.items_imported', {
+    description: 'Itens da lista de compras da Alexa (via Home Assistant) que entraram na lista',
+  }),
 }
 
 /** Log em JSON no stdout, com trace_id/span_id do span ativo para correlacionar no Grafana. */

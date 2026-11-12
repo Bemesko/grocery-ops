@@ -117,6 +117,23 @@
       <NuxtLink to="/itens" class="botao">Gerenciar itens ({{ itens.length }})</NuxtLink>
     </section>
 
+    <!-- Alexa -->
+    <section id="alexa">
+      <h2>Lista da Alexa</h2>
+      <p v-if="!alexa?.ligada" class="suave">
+        Desligada. Para ligar, o servidor precisa de HA_URL, HA_TOKEN e HA_TODO_ENTITY (Secret grocery-ops-alexa).
+      </p>
+      <template v-else>
+        <p class="suave">
+          O que é pedido para a Alexa entra na lista (itens novos em "Outros") e sai como concluído na lista da Alexa.
+          O app confere a cada minuto e ao abrir.
+        </p>
+        <p v-if="alexa.erro" class="aviso alerta">Última tentativa falhou: {{ alexa.erro }}</p>
+        <p v-else-if="alexa.ultimaEm" class="suave">Última sincronização: {{ horaCurta(alexa.ultimaEm) }}</p>
+        <button type="button" class="botao" :disabled="sincronizando" @click="sincronizarAlexa">Sincronizar agora</button>
+      </template>
+    </section>
+
     <!-- Importação -->
     <section id="importar">
       <h2>Importar histórico (CSV)</h2>
@@ -173,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Categoria, Configuracao, Mercado } from '../../shared/types/api'
+import type { Categoria, Configuracao, EstadoAlexa, Mercado } from '../../shared/types/api'
 import type { BaseBudget } from '../../shared/utils/budget'
 
 interface Saldo {
@@ -218,6 +235,22 @@ async function carregarSaldo() {
 async function carregarMercados() {
   mercados.value = (await tentar(() => $fetch<Mercado[]>('/api/mercados'))) ?? []
 }
+const alexa = ref<EstadoAlexa | null>(null)
+const sincronizando = ref(false)
+
+async function sincronizarAlexa() {
+  sincronizando.value = true
+  const r = await tentar(() => $fetch<EstadoAlexa>('/api/alexa/sincronizar', { method: 'POST' }))
+  sincronizando.value = false
+  if (!r) return
+  alexa.value = r
+  if (!r.erro) avisar(r.importados ? `${r.importados} ${r.importados === 1 ? 'item entrou' : 'itens entraram'} na lista` : 'Nada novo na Alexa')
+}
+
+function horaCurta(iso: string) {
+  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
 async function carregarImportacoes() {
   importacoes.value = (await tentar(() => $fetch<Importacao[]>('/api/importacao'))) ?? []
 }
@@ -229,6 +262,9 @@ onMounted(() => {
   })
   carregarMercados()
   carregarImportacoes()
+  tentar(() => $fetch<EstadoAlexa>('/api/alexa')).then((r) => {
+    alexa.value = r ?? null
+  })
   recarregarCategorias().catch(() => {})
   recarregarItens().catch(() => {})
   $fetch<{ version: string }>('/api/version').then((v) => (versao.value = v.version)).catch(() => {})
