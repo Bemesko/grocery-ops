@@ -4,7 +4,7 @@ export default defineEventHandler(async (): Promise<RespostaLista> => {
   const sql = await useDb()
   const itens = await sql`
     select li.id, li.item_id, i.nome, i.categoria_id, i.unidade, li.quantidade, li.prioritario,
-      li.nesta_ida, li.criado_em
+      li.nesta_ida, li.criado_em, li.origem
     from lista_item li join item i on i.id = li.item_id
     where li.status = 'aberto'
     order by li.prioritario desc, i.nome

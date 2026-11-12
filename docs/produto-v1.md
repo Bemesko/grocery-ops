@@ -42,6 +42,14 @@ Etapas, na ordem do uso: **Anotar → Preparar a ida → No mercado → Fechar a
 - Agrupada por categoria, na ordem dos corredores.
 - Sincronização: a tela refaz a busca a cada 5 s enquanto está visível e ao voltar o foco. Sem tempo real na v1; a última escrita vale.
 
+### Lista da Alexa
+
+- A lista de compras da Alexa sincroniza com o Home Assistant do cluster, que a expõe como uma entidade de tarefas (`todo.*`). Só nesse sentido: o que é pedido para a Alexa entra na lista do app, que é a lista de verdade.
+- A cada minuto (e quando o app abre), o servidor lê os itens pendentes da lista no HA. Cada um entra na lista do app: se o nome é igual ou quase igual a um item conhecido (sem acento, singular/plural, erro pequeno de digitação), entra esse item; senão o item é criado na categoria "Outros". Item já aberto na lista não duplica; durante uma compra em andamento, entra direto em "nesta ida".
+- Depois de entrar, o item é marcado como concluído na lista da Alexa. O app guarda o identificador de cada item importado: mesmo se marcar como concluído falhar, ele não entra de novo.
+- Na lista, o item vindo da Alexa tem o selo "Alexa". Em Ajustes, "Lista da Alexa" mostra a última sincronização ou o erro e tem "Sincronizar agora".
+- Configuração: Secret opcional `grocery-ops-alexa` (`HA_URL`, `HA_TOKEN`, `HA_TODO_ENTITY`). Sem ele a sincronização fica desligada. O entity_id da lista tem o e-mail da conta da Alexa: fica só no Secret criptografado.
+
 ### Preparar a ida
 
 A lista é o que a casa precisa; a ida ao mercado leva só uma parte. Preparar a ida é um **modo da tela da lista**, não uma tela nova, e é opcional.
@@ -173,7 +181,7 @@ item           id, nome, nome_normalizado (único: minúsculo, sem acento, espa�
                categoria_id, unidade [un|kg], embalagem_qtd, embalagem_unidade [g|kg|ml|l|un] (habitual),
                criado_em
 lista_item     id, item_id, quantidade (texto livre, opcional), prioritario, nesta_ida,
-               status [aberto|comprado|removido], criado_em, resolvido_em
+               status [aberto|comprado|removido], origem [app|alexa], criado_em, resolvido_em
                -- único: um lista_item aberto por item
 compra         id, mercado_id, status [em_andamento|finalizada|cancelada],
                data (dia da compra), iniciada_em, finalizada_em,
@@ -186,6 +194,7 @@ nfce_item      id, compra_id, ordem, codigo (do produto na loja), descricao, qua
                unitario_centavos (cheio), total_centavos (antes do desconto), desconto_centavos (da nota; nulo = a nota não diz),
                ean, compra_item_id (par confirmado)
 item_codigo    mercado_id, codigo, item_id  -- pares confirmados, por mercado
+alexa_importado uid (do item no Home Assistant), lista_item_id, importado_em, concluido_no_ha
 saldo_ajuste   id, em (timestamp), saldo_centavos
 configuracao   chave, valor (jsonb)  -- dia_preferido: 0 = segunda … 6 = domingo
 importacao     id, arquivo, criada_em

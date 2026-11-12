@@ -42,6 +42,11 @@ spec:
             - configMapRef:
                 name: grocery-ops-otel
                 optional: true
+            # Lista de compras da Alexa via Home Assistant (HA_URL, HA_TOKEN, HA_TODO_ENTITY).
+            # Opcional: sem ele a sincronização fica desligada.
+            - secretRef:
+                name: grocery-ops-alexa
+                optional: true
           readinessProbe:
             httpGet:
               path: /healthz

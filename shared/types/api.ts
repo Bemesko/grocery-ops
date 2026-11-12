@@ -48,6 +48,8 @@ export interface ListaItem {
   prioritario: boolean
   nestaIda: boolean
   criadoEm: string
+  /** De onde o item entrou na lista: o app ou a lista de compras da Alexa. */
+  origem: 'app' | 'alexa'
   /** Estimativa por mercado (chave = id do mercado), em centavos. */
   estimativas: Record<string, number>
 }
@@ -240,6 +242,17 @@ export interface Gastos {
   /** Budget × gasto por semana (só no mês). */
   semanas: SemanaEvolucao[] | null
 }
+}
+
+/** Sincronização com a lista de compras da Alexa (via Home Assistant). */
+export interface EstadoAlexa {
+  /** HA_URL, HA_TOKEN e HA_TODO_ENTITY configurados. */
+  ligada: boolean
+  /** Última rodada (ISO), com ou sem erro. */
+  ultimaEm: string | null
+  /** Itens que entraram na lista na última rodada. */
+  importados: number
+  erro: string | null
 }
 
 export interface Configuracao {

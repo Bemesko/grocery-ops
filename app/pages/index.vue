@@ -83,6 +83,7 @@
               <div>
                 {{ li.nome }}
                 <span v-if="li.quantidade" class="suave">· {{ li.quantidade }}</span>
+                <span v-if="li.origem === 'alexa'" class="selo neutro" title="Pedido para a Alexa">Alexa</span>
               </div>
               <div v-if="editando === li.id" class="edicao" @click.stop>
                 <input
@@ -153,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ItemResumo, ListaItem, RespostaLista } from '../../shared/types/api'
+import type { EstadoAlexa, ItemResumo, ListaItem, RespostaLista } from '../../shared/types/api'
 
 const dados = ref<RespostaLista | null>(null)
 const carregado = ref(false)
@@ -175,6 +176,12 @@ onMounted(() => {
   carregar()
   recarregarItens().catch(() => {})
   recarregarCategorias().catch(() => {})
+  // Traz o que foi pedido para a Alexa sem esperar a próxima rodada do servidor (1 min).
+  $fetch<EstadoAlexa>('/api/alexa/sincronizar', { method: 'POST' })
+    .then((r) => {
+      if (r.importados) carregar()
+    })
+    .catch(() => {})
 })
 useAtualizacaoPeriodica(() => {
   if (!editando.value) carregar()

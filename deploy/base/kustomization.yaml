@@ -6,7 +6,9 @@
 #     componente pode apontar para outro secret (components/postgres-cnpg). Sem ele, a
 #     base ainda sobe Healthy (o e2e do repo central usa a base pura), com a API em 503;
 #   - ConfigMap `grocery-ops-otel` (opcional) com variáveis OTEL_* (OTEL_EXPORTER_OTLP_ENDPOINT
-#     liga a telemetria).
+#     liga a telemetria);
+#   - Secret `grocery-ops-alexa` (opcional) com HA_URL, HA_TOKEN e HA_TODO_ENTITY: liga a
+#     sincronização da lista de compras da Alexa pelo Home Assistant.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 labels:

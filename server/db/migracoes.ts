@@ -170,4 +170,21 @@ export const migracoes: { id: string; sql: string }[] = [
         add column ean text;
     `,
   },
+  {
+    // Lista de compras da Alexa, sincronizada pelo Home Assistant: o que entra na lista
+    // vindo de lá (lista_item.origem) e os itens da Alexa já importados (pelo uid do HA),
+    // para nunca importar duas vezes, mesmo se marcar como concluído no HA falhar.
+    id: '005_alexa',
+    sql: /* sql */ `
+      alter table lista_item
+        add column origem text not null default 'app' check (origem in ('app', 'alexa'));
+
+      create table alexa_importado (
+        uid text primary key,
+        lista_item_id int references lista_item (id) on delete set null,
+        importado_em timestamptz not null default now(),
+        concluido_no_ha boolean not null default false
+      );
+    `,
+  },
 ]

@@ -67,4 +67,22 @@ O CI ([ci.yaml](.github/workflows/ci.yaml)) roda o pre-commit e um e2e: constró
 | Banco | contrato da base: Secret `grocery-ops-db` com `DATABASE_URL`. O overlay `tailscale` usa o componente [postgres-cnpg](deploy/components/postgres-cnpg/kustomization.yaml) (precisa do operador CNPG no cluster); para outro Postgres, troque o componente |
 | Telemetria | ConfigMap opcional `grocery-ops-otel` com variáveis `OTEL_*`. O overlay `tailscale` aponta para o `otel-agent.observability.svc:4318` (ADR 008 do repo central) |
 | Segredos | `deploy/**.sops.yaml` + KSOPS (veja [secret-generator.yaml](deploy/base/secret-generator.yaml)) |
+| Lista da Alexa | Secret opcional `grocery-ops-alexa` com `HA_URL`, `HA_TOKEN` e `HA_TODO_ENTITY`. O overlay `tailscale` o gera de [alexa.sops.yaml](deploy/overlays/tailscale/alexa.sops.yaml) (criptografado; vem com valores de exemplo) |
 | Repo e imagem | públicos: a credencial do ArgoCD só cobre a org `bernats-homelab` |
+
+## Lista da Alexa
+
+A lista de compras da Alexa sincroniza com o Home Assistant do cluster, que a expõe como uma entidade `todo.*`. O app consulta essa lista a cada minuto (e quando é aberto), põe os itens pendentes na lista do app e os marca como concluídos no HA (detalhes em [docs/produto-v1.md](docs/produto-v1.md), "Lista da Alexa").
+
+1. No HA, crie um usuário só para o app (sem ser administrador) e, no perfil dele, um *long-lived access token*.
+2. No WSL, troque os valores de exemplo do Secret (o arquivo já está criptografado; o `sops edit` abre descriptografado e criptografa ao salvar):
+
+   ```bash
+   sops edit deploy/overlays/tailscale/alexa.sops.yaml
+   ```
+
+   - `HA_URL`: já aponta para o Service do HA no cluster (`http://home-assistant.home-assistant.svc.cluster.local:8123`).
+   - `HA_TOKEN`: o token do passo 1.
+   - `HA_TODO_ENTITY`: o entity_id da lista (Configurações → Entidades → `todo.*`). Ele tem o e-mail da conta da Alexa: só neste arquivo criptografado.
+
+3. Commit e release como de costume. Em Ajustes → "Lista da Alexa" aparece a última sincronização ou o erro.
