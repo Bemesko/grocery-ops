@@ -17,6 +17,10 @@
         <strong>copie o link</strong> e volte aqui para colar.
       </li>
     </ol>
+    <p class="suave aviso-prazo">
+      A nota pode levar uns 30 minutos para aparecer no site da SEFAZ depois da compra. Se o site disser que a NF não
+      está cadastrada, tente de novo por volta das {{ tentarAs }}.
+    </p>
     <div class="linha botoes">
       <a class="botao primario" :href="url" target="_blank" rel="noopener noreferrer">Abrir a nota</a>
       <button type="button" class="botao" :disabled="ocupado" @click="colar">Colar link da nota</button>
@@ -39,6 +43,9 @@
 <script setup lang="ts">
 defineProps<{ url: string; ocupado?: boolean; mensagem?: string | null }>()
 const emit = defineEmits<{ link: [url: string] }>()
+
+// #50: a SEFAZ demora para publicar a NFC-e; antes disso ela responde "NF não cadastrada".
+const tentarAs = new Date(Date.now() + 30 * 60_000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
 const campo = ref(false)
 const texto = ref('')
@@ -87,6 +94,10 @@ async function colar() {
   padding-left: 1.25rem;
   display: grid;
   gap: 0.35rem;
+}
+
+.aviso-prazo {
+  font-size: 0.85rem;
 }
 
 .botoes {

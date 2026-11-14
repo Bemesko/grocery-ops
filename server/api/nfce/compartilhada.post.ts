@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
   // nota (pelo CNPJ) primeiro.
   const candidatos = await sql`
     select c.id, m.nome as mercado, c.data, c.status,
-      coalesce((select sum(total_centavos) from compra_item where compra_id = c.id), 0)::int8 as total,
+      (select total from compra_total where compra_id = c.id) as total,
       (m.cnpj = ${nota.cnpj}) as mesmo_mercado
     from compra c join mercado m on m.id = c.mercado_id
     where c.chave_nfce is null

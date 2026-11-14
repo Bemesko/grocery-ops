@@ -90,7 +90,9 @@ describe('compra', () => {
 
     const fim = conforme(contrato.resumoCompra, await api.post(`/api/compras/${c.corpo.id}/finalizar`, { totalNota: 3500 }))
     assert.equal(fim.compra.status, 'finalizada')
-    assert.equal(fim.compra.total, 6 * 459 + Math.round(1.234 * 599))
+    // Com nota, o total oficial é o dela (#48); os itens ficam em totalItens.
+    assert.equal(fim.compra.totalItens, 6 * 459 + Math.round(1.234 * 599))
+    assert.equal(fim.compra.total, 3500)
     assert.equal(fim.compra.totalNota, 3500)
     assert.equal(fim.foraDaLista.quantidade, 1)
 

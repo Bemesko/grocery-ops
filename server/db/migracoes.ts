@@ -212,4 +212,18 @@ export const migracoes: { id: string; sql: string }[] = [
         add column unidades int check (unidades > 0);
     `,
   },
+  {
+    // Total oficial de uma compra (#48): o da nota fiscal quando existe, senão a soma dos
+    // itens. Orçamento, gastos e listas de compras usam esta view; a diferença entre a nota
+    // e os itens aparece à parte, sem ser distribuída entre os itens.
+    id: '008_compra_total',
+    sql: /* sql */ `
+      create view compra_total as
+      select c.id as compra_id,
+        coalesce(sum(ci.total_centavos), 0)::int8 as itens,
+        coalesce(c.total_nota_centavos, sum(ci.total_centavos), 0)::int8 as total
+      from compra c left join compra_item ci on ci.compra_id = c.id
+      group by c.id;
+    `,
+  },
 ]

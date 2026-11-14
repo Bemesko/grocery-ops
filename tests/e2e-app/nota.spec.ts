@@ -34,3 +34,21 @@ test('lê a nota, casa a água anotada e confirma com o preço pago e o cheio', 
   )
   expect(resumo.itens.map((i) => [i.nome, i.precoUnitario, i.precoCheio])).toEqual([['Água sem gás', 149, 169]])
 })
+
+test('compra com total da nota: total oficial, itens e categorias com a diferença', async ({ page }) => {
+  const { id: mercadoId } = await api<{ id: number }>('POST', '/api/mercados', { nome: 'Mercado A' })
+  const { id } = await api<{ id: number }>('POST', '/api/compras', { mercadoId })
+  await api('POST', `/api/compras/${id}/itens`, { nome: 'Arroz', categoriaId: CATEGORIA.mercearia, precoUnitario: 2000, quantidade: 1, unidade: 'un' })
+  await api('POST', `/api/compras/${id}/itens`, { nome: 'Banana', categoriaId: CATEGORIA.hortifruti, precoUnitario: 1000, quantidade: 1, unidade: 'un' })
+  await api('POST', `/api/compras/${id}/finalizar`, { totalNota: 2800 })
+
+  await page.goto(`/compras/${id}`)
+  const destaque = page.locator('.destaque')
+  await expect(destaque).toContainText('Total da nota')
+  await expect(destaque).toContainText('R$ 28,00')
+  await expect(destaque).toContainText('Itens: R$ 30,00')
+  const categorias = page.locator('ul.categorias')
+  await expect(categorias).toContainText('Mercearia')
+  await expect(categorias).toContainText('Hortifruti')
+  await expect(categorias).toContainText('Diferença da nota')
+})

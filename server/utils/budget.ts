@@ -49,11 +49,10 @@ export async function baseBudget(sql: Sql, hoje = hojeSP()): Promise<BaseBudget>
       coalesce(sum(t.total) filter (where t.data between ${s.inicio} and ${s.fim}), 0)::int8
         as gasto_periodo
     from (
-      select c.data, c.finalizada_em, sum(ci.total_centavos) as total
-      from compra c join compra_item ci on ci.compra_id = c.id
+      select c.data, c.finalizada_em, ct.total
+      from compra c join compra_total ct on ct.compra_id = c.id
       where c.status = 'finalizada'
         and (c.finalizada_em > ${ajuste.em as Date} or c.data between ${s.inicio} and ${s.fim})
-      group by c.id
     ) t
   `
   const saldo = (ajuste.saldoCentavos as number) - (r!.gastoDesdeAjuste as number)
@@ -76,8 +75,8 @@ export async function semanasDoMes(sql: Sql, mes: string, hoje = hojeSP()) {
   const inicio = `${mes}-01`
   const fim = ultimoDiaDoMes(inicio)
   const porDia = await sql`
-    select c.data, sum(ci.total_centavos)::int8 as total
-    from compra c join compra_item ci on ci.compra_id = c.id
+    select c.data, sum(ct.total)::int8 as total
+    from compra c join compra_total ct on ct.compra_id = c.id
     where c.status = 'finalizada' and c.data between ${inicio} and ${fim}
     group by c.data
   `
@@ -94,8 +93,8 @@ export async function semanasDoMes(sql: Sql, mes: string, hoje = hojeSP()) {
   let saldoFim: number | null = null
   if (ajuste) {
     const [r] = await sql`
-      select coalesce(sum(ci.total_centavos), 0)::int8 as total
-      from compra c join compra_item ci on ci.compra_id = c.id
+      select coalesce(sum(ct.total), 0)::int8 as total
+      from compra c join compra_total ct on ct.compra_id = c.id
       where c.status = 'finalizada' and c.finalizada_em > ${ajuste.em as Date} and c.data <= ${fim}
     `
     saldoFim = (ajuste.saldoCentavos as number) - (r!.total as number)

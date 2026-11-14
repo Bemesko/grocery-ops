@@ -94,6 +94,7 @@ export const compra = z
     origem: z.enum(['app', 'importacao', 'nfce']),
     totalNota: centavos.nullable(),
     total: centavos,
+    totalItens: centavos,
   })
   .strict()
 
