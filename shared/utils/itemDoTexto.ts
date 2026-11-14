@@ -1,6 +1,6 @@
 // Acha, entre os itens do app, o que corresponde a um texto livre (um item dito para a
-// Alexa, por exemplo): nome igual ignorando acento e maiúsculas, ou quase igual (plural,
-// erro de digitação). null = item novo.
+// Alexa, por exemplo): nome ou outro nome (alias) igual ignorando acento e maiúsculas, ou
+// quase igual (plural, erro de digitação). null = item novo.
 import { similaridade } from './busca.ts'
 import { normalizarNome } from './texto.ts'
 
@@ -14,16 +14,19 @@ function singular(nome: string): string {
     .join(' ')
 }
 
-export function itemParaTexto<T extends { nome: string }>(texto: string, itens: T[]): T | null {
+const nomesDe = (item: { nome: string; aliases?: string[] }) => [item.nome, ...(item.aliases ?? [])].map(normalizarNome)
+
+export function itemParaTexto<T extends { nome: string; aliases?: string[] }>(texto: string, itens: T[]): T | null {
   const alvo = normalizarNome(texto)
   if (!alvo) return null
-  const exato = itens.find((i) => normalizarNome(i.nome) === alvo)
+  const exato = itens.find((i) => nomesDe(i).includes(alvo))
   if (exato) return exato
   let melhor: { item: T; nota: number } | null = null
   for (const item of itens) {
-    const nome = normalizarNome(item.nome)
-    const nota = singular(nome) === singular(alvo) ? 1 : similaridade(nome, alvo)
-    if (nota >= SIMILARIDADE_MINIMA && (!melhor || nota > melhor.nota)) melhor = { item, nota }
+    for (const nome of nomesDe(item)) {
+      const nota = singular(nome) === singular(alvo) ? 1 : similaridade(nome, alvo)
+      if (nota >= SIMILARIDADE_MINIMA && (!melhor || nota > melhor.nota)) melhor = { item, nota }
+    }
   }
   return melhor?.item ?? null
 }

@@ -86,7 +86,11 @@ export async function sincronizarAlexa(sql: Sql): Promise<EstadoAlexa> {
       )
       const faltam = itensHa.filter((i) => !ja.has(i.uid))
       if (!faltam.length) return 0
-      const itensApp = (await tx`select id, nome from item`) as unknown as { id: number; nome: string }[]
+      const itensApp = (await tx`
+        select i.id, i.nome,
+          coalesce((select array_agg(a.alias) from item_alias a where a.item_id = i.id), '{}') as aliases
+        from item i
+      `) as unknown as { id: number; nome: string; aliases: string[] }[]
       // Item que o app não conhece entra em "Outros" (ou na última categoria, se não houver).
       const [categoria] = await tx`
         select id from categoria order by (lower(nome) = 'outros') desc, ordem desc limit 1
@@ -96,7 +100,7 @@ export async function sincronizarAlexa(sql: Sql): Promise<EstadoAlexa> {
         const item = conhecido
           ? conhecido
           : await resolverItem(tx, { nome: i.summary, categoriaId: categoria!.id as number })
-        if (!conhecido) itensApp.push({ id: item.id, nome: item.nome })
+        if (!conhecido) itensApp.push({ id: item.id, nome: item.nome, aliases: [] })
         const linha = await adicionarNaLista(tx, item.id, { origem: 'alexa' })
         await tx`
           insert into alexa_importado (uid, lista_item_id) values (${i.uid}, ${linha.id})

@@ -2,17 +2,20 @@
   Campo de item com sugestões dos nomes já usados. Enter escolhe o item de mesmo nome
   (ignorando acento e maiúsculas); senão oferece criar um novo. Emite `escolher` (item
   existente) ou `novo` (nome digitado).
+  O campo usa :value + @input, e não v-model: o v-model espera o fim da composição do teclado
+  (Android), e as sugestões só apareciam ao fechar o teclado (#26).
 -->
 <template>
   <div class="busca">
     <input
       ref="campo"
-      v-model="texto"
+      :value="texto"
       type="text"
       :placeholder="placeholder"
       autocomplete="off"
       autocapitalize="sentences"
       enterkeyhint="done"
+      @input="texto = ($event.target as HTMLInputElement).value"
       @keydown.enter.prevent="confirmar"
       @keydown.down.prevent="mover(1)"
       @keydown.up.prevent="mover(-1)"

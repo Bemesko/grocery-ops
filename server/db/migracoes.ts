@@ -187,4 +187,19 @@ export const migracoes: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    // Variante na lista (ex.: "integral 1 L") e outros nomes de um item (aliases), usados
+    // pela busca e pela lista da Alexa; juntar dois itens guarda o nome do que sumiu.
+    id: '006_variante_e_aliases',
+    sql: /* sql */ `
+      alter table lista_item add column variante text;
+
+      create table item_alias (
+        alias_normalizado text primary key,
+        alias text not null,
+        item_id int not null references item (id) on delete cascade
+      );
+      create index item_alias_item on item_alias (item_id);
+    `,
+  },
 ]

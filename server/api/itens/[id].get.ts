@@ -40,8 +40,16 @@ export default defineEventHandler(async (event) => {
   const porMercado = new Map<number, (typeof linhas)[number]>()
   for (const c of linhas) if (!porMercado.has(c.mercadoId as number)) porMercado.set(c.mercadoId as number, c)
   const { embalagemQtd, embalagemUnidade, ...dados } = item
+  const aliases = await sql`select alias from item_alias where item_id = ${id} order by alias`
+  const [uso] = await sql`select count(distinct compra_id)::int8 as n from compra_item where item_id = ${id}`
   return {
-    item: { ...dados, embalagem: embalagemDe(embalagemQtd, embalagemUnidade) },
+    item: {
+      ...dados,
+      embalagem: embalagemDe(embalagemQtd, embalagemUnidade),
+      aliases: aliases.map((a) => a.alias as string),
+      /** Compras com o item: com alguma, ele não pode ser apagado. */
+      emCompras: Number(uso!.n),
+    },
     ultimoPorMercado: [...porMercado.values()],
     compras: linhas,
   }

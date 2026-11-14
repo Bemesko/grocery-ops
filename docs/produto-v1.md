@@ -35,7 +35,9 @@ Etapas, na ordem do uso: **Anotar → Preparar a ida → No mercado → Fechar a
 ### Lista (anotar)
 
 - Campo único "adicionar item" no topo. Ao digitar, sugere itens já registrados (inclusive os que só aparecem em compras), com busca sem acento e sem diferenciar maiúsculas. Se o texto é parecido com um item existente, a sugestão aparece primeiro ("Tapioca" para "tapioka"), para manter os dados consistentes.
-- Item novo: escolher a categoria em chips (uma vez; depois é lembrada).
+- Item novo: categoria em chips, com "Outros" já marcado (um toque em "Adicionar" confirma); depois é lembrada.
+- Tocar na linha abre a edição: quantidade e variante (ex.: "integral 1 L", que vai como sugestão para o mercado) e "Editar item" (nome e categoria, que valem para o item em todo o app).
+- As sugestões aparecem a cada letra, também com o teclado do Android aberto, e acham o item pelo nome ou por um dos outros nomes dele.
 - Quantidade opcional ("2", "1 kg"). Item que já está na lista não duplica: o app destaca o existente.
 - Um toque marca/desmarca prioritário: um "!" num círculo, laranja quando ligado, e uma barra laranja na borda esquerda da linha. Prioritários aparecem primeiro dentro de cada categoria.
 - Arrastar um item para o lado: para a direita, **comprado** (sai da lista sem registrar preço, ex.: comprado na padaria); para a esquerda, **tirar da lista**. O aviso que aparece permite desfazer. Os dois também ficam como botões ao tocar no item.
@@ -120,7 +122,8 @@ Detalhe do item: último preço em cada mercado e as últimas compras, com a emb
 - Categorias: nome e ordem (arrastar). Seed inicial, na ordem dos corredores: Hortifruti, Padaria, Frios e laticínios, Congelados, Açougue e peixaria, Mercearia, Limpeza, Utilidades do lar, Higiene pessoal, Pet, Bebidas, Outros.
 - Saldo do VR: "ajustar saldo" (valor de agora) e histórico de ajustes. No dia 1, o ajuste registra a recarga.
 - Saldo do VR também define o **dia de ir ao mercado** (padrão: sexta), usado no budget semanal.
-- Itens (tela própria, `/itens`): todos por categoria, com busca; seleção para mudar a categoria de vários de uma vez e para juntar vários num só (escolhendo o nome que fica); "possíveis duplicados" por nome parecido, com "são diferentes" para dispensar o par; apagar itens nunca usados. No detalhe do item: renomear, categoria, unidade e embalagem habitual.
+- Itens (tela própria, `/itens`): todos por categoria, com busca; seleção para mudar a categoria de vários de uma vez e para juntar vários num só (escolhendo o nome que fica); "possíveis duplicados" por nome parecido, com "são diferentes" para dispensar o par; apagar item que não está em nenhuma compra (o histórico da lista sai junto; com compras, é preciso apagar as compras antes). No detalhe do item: renomear, categoria, unidade, embalagem habitual, outros nomes e apagar.
+- Outros nomes de um item (ex.: "mandioca" para "Aipim"): a busca e a lista da Alexa acham o item por eles, e digitar um deles ao adicionar põe o item existente. Juntar dois itens guarda o nome do que some como outro nome do que fica.
 - Importar histórico (CSV).
 - **Ocultar valores**: o olho no canto do cabeçalho de todas as telas troca todo valor em R$ (saldo, budget, preços, totais, estimativas, referências) por `R$ •••••`. Percentuais, quantidades, barras e o formato do gráfico continuam; na folha de preço, o que se digita continua visível. A escolha fica no aparelho (cada celular decide o seu).
 
@@ -180,7 +183,7 @@ mercado        id, nome (único), tipo [atacado|varejo], cnpj (único, aprendido
 item           id, nome, nome_normalizado (único: minúsculo, sem acento, espaços colapsados),
                categoria_id, unidade [un|kg], embalagem_qtd, embalagem_unidade [g|kg|ml|l|un] (habitual),
                criado_em
-lista_item     id, item_id, quantidade (texto livre, opcional), prioritario, nesta_ida,
+lista_item     id, item_id, quantidade (texto livre, opcional), variante, prioritario, nesta_ida,
                status [aberto|comprado|removido], origem [app|alexa], criado_em, resolvido_em
                -- único: um lista_item aberto por item
 compra         id, mercado_id, status [em_andamento|finalizada|cancelada],
@@ -194,6 +197,7 @@ nfce_item      id, compra_id, ordem, codigo (do produto na loja), descricao, qua
                unitario_centavos (cheio), total_centavos (antes do desconto), desconto_centavos (da nota; nulo = a nota não diz),
                ean, compra_item_id (par confirmado)
 item_codigo    mercado_id, codigo, item_id  -- pares confirmados, por mercado
+item_alias     alias_normalizado (único), alias, item_id  -- outros nomes do item
 alexa_importado uid (do item no Home Assistant), lista_item_id, importado_em, concluido_no_ha
 saldo_ajuste   id, em (timestamp), saldo_centavos
 configuracao   chave, valor (jsonb)  -- dia_preferido: 0 = segunda … 6 = domingo

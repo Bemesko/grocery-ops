@@ -23,8 +23,11 @@
       <p>
         Categoria de <strong>{{ novoNome }}</strong>:
       </p>
-      <EscolhaCategoria :model-value="null" @update:model-value="adicionarNovo" />
-      <button type="button" class="texto" @click="novoNome = ''">Cancelar</button>
+      <EscolhaCategoria v-model="categoriaNova" />
+      <div class="linha acoes-novo">
+        <button type="button" class="texto" @click="novoNome = ''">Cancelar</button>
+        <button type="button" class="primario" :disabled="!categoriaNova" @click="adicionarNovo">Adicionar</button>
+      </div>
     </div>
 
     <div class="modo">
@@ -83,14 +86,36 @@
               <div>
                 {{ li.nome }}
                 <span v-if="li.quantidade" class="suave">· {{ li.quantidade }}</span>
+                <span v-if="li.variante" class="suave">· {{ li.variante }}</span>
                 <span v-if="li.origem === 'alexa'" class="selo neutro" title="Pedido para a Alexa">Alexa</span>
               </div>
               <div v-if="editando === li.id" class="edicao" @click.stop>
-                <input
-                  :value="li.quantidade ?? ''"
-                  placeholder="Quantidade (ex.: 2, 1 kg)"
-                  @change="mudarQuantidade(li, ($event.target as HTMLInputElement).value)"
-                />
+                <div class="campos-linha">
+                  <input
+                    :value="li.quantidade ?? ''"
+                    placeholder="Quantidade (ex.: 2, 1 kg)"
+                    aria-label="Quantidade"
+                    @change="mudarNaLista(li, 'quantidade', ($event.target as HTMLInputElement).value)"
+                  />
+                  <input
+                    :value="li.variante ?? ''"
+                    placeholder="Variante (ex.: integral 1 L)"
+                    aria-label="Variante"
+                    @change="mudarNaLista(li, 'variante', ($event.target as HTMLInputElement).value)"
+                  />
+                </div>
+                <details class="editar-item">
+                  <summary class="suave">Editar item (nome e categoria)</summary>
+                  <label :for="`nome-${li.id}`">Nome</label>
+                  <input :id="`nome-${li.id}`" v-model="edicaoItem.nome" maxlength="80" />
+                  <label>Categoria</label>
+                  <EscolhaCategoria v-model="edicaoItem.categoriaId" />
+                  <div class="linha acoes-novo">
+                    <button type="button" class="primario" :disabled="!edicaoItem.nome.trim()" @click="salvarItem(li)">
+                      Salvar item
+                    </button>
+                  </div>
+                </details>
                 <div class="linha">
                   <NuxtLink :to="`/itens/${li.itemId}`" class="suave">Preços do item</NuxtLink>
                   <span class="cresce" />
@@ -163,7 +188,7 @@ const escolhendoMercado = ref(false)
 const editando = ref<number | null>(null)
 const novoNome = ref('')
 const { itens, recarregar: recarregarItens } = useItens()
-const { categorias, recarregar: recarregarCategorias } = useCategorias()
+const { categorias, recarregar: recarregarCategorias, outros } = useCategorias()
 
 async function carregar() {
   const resposta = await tentar(() => $fetch<RespostaLista>('/api/lista'))
@@ -239,12 +264,18 @@ function adicionarExistente(item: ItemResumo) {
   adicionar({ itemId: item.id })
 }
 
+// Item novo: "Outros" já vem marcado (#56); a categoria se troca na hora ou depois, pela lista.
+const categoriaNova = ref<number | null>(null)
+
 function pedirCategoria(nome: string) {
   novoNome.value = nome
+  categoriaNova.value = outros.value
 }
 
-async function adicionarNovo(categoriaId: number) {
+async function adicionarNovo() {
   const nome = novoNome.value
+  const categoriaId = categoriaNova.value
+  if (!categoriaId) return
   novoNome.value = ''
   await adicionar({ nome, categoriaId })
 }
@@ -255,11 +286,35 @@ async function alternar(li: ListaItem, campo: 'prioritario' | 'nestaIda') {
   if (!ok) await carregar()
 }
 
-async function mudarQuantidade(li: ListaItem, valor: string) {
-  li.quantidade = valor.trim() || null
-  await tentar(() => $fetch(`/api/lista/${li.id}`, { method: 'PATCH', body: { quantidade: li.quantidade } }))
-  editando.value = null
+async function mudarNaLista(li: ListaItem, campo: 'quantidade' | 'variante', valor: string) {
+  li[campo] = valor.trim() || null
+  await tentar(() => $fetch(`/api/lista/${li.id}`, { method: 'PATCH', body: { [campo]: li[campo] } }))
   await carregar()
+}
+
+// Editar o item pela lista (#38): nome e categoria valem para o item em todo o app.
+const edicaoItem = reactive<{ nome: string; categoriaId: number | null }>({ nome: '', categoriaId: null })
+
+// Preenche ao abrir a linha (e não no toggle do <details>, que chega depois e apagaria o
+// que já foi digitado).
+watch(editando, (id) => {
+  const li = lista.value.find((x) => x.id === id)
+  if (!li) return
+  edicaoItem.nome = li.nome
+  edicaoItem.categoriaId = li.categoriaId
+})
+
+async function salvarItem(li: ListaItem) {
+  const ok = await tentar(() =>
+    $fetch(`/api/itens/${li.itemId}`, {
+      method: 'PATCH',
+      body: { nome: edicaoItem.nome, categoriaId: edicaoItem.categoriaId },
+    }),
+  )
+  if (!ok) return
+  avisar('Item atualizado')
+  editando.value = null
+  await Promise.all([carregar(), recarregarItens()])
 }
 
 const arraste = useArrastar((id, direcao) => {
@@ -422,6 +477,31 @@ li.fora .cresce {
   display: grid;
   gap: 0.5rem;
   cursor: default;
+}
+
+.campos-linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.campos-linha input {
+  min-width: 0;
+}
+
+.editar-item {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.editar-item summary {
+  cursor: pointer;
+}
+
+.acoes-novo {
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .rodape {
