@@ -41,11 +41,23 @@ function guardarNoCache(url: string, consulta: Consulta) {
   if (consulta.resultado === 'ok' || consulta.resultado === 'verificacao') cache.set(url, { em: agora, consulta })
 }
 
+/**
+ * Só nos testes de integração (GROCERY_TESTE=1): a consulta vai para um servidor local que
+ * imita a SEFAZ (tests/apoio/sefaz-falsa.ts). O link continua validado como da SEFAZ-SC;
+ * só o destino do fetch muda, e só para 127.0.0.1/localhost.
+ */
+function destinoDaConsulta(url: string): string {
+  const destino = process.env.GROCERY_TESTE === '1' ? process.env.NFCE_DESTINO_TESTE : undefined
+  if (!destino || !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(destino)) return url
+  const u = new URL(url)
+  return `${destino}${u.pathname}${u.search}`
+}
+
 /** Busca a página da nota seguindo redirecionamentos só dentro do host da SEFAZ. */
 async function buscarPagina(inicial: string): Promise<{ html: string; url: string }> {
   let url = inicial
   for (let saltos = 0; saltos < 5; saltos++) {
-    const resposta = await fetch(url, {
+    const resposta = await fetch(destinoDaConsulta(url), {
       redirect: 'manual',
       signal: AbortSignal.timeout(TEMPO_LIMITE),
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; grocery-ops)', Accept: 'text/html' },

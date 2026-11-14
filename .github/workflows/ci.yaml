@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -145,3 +146,40 @@ jobs:
           sudo k3s kubectl -n ci logs deployment/grocery-ops-postgres --previous --tail=80 || true
           sudo k3s kubectl -n ci get events --sort-by=.lastTimestamp || true
           sudo k3s kubectl -n ci logs deployment/grocery-ops-otelcol --tail=200 || true
+
+  # Integração, contrato e Playwright (tests/integracao, tests/e2e-app) com o build de
+  # produção, um Postgres de serviço e o HA e a SEFAZ falsos. Só na main (e sob demanda):
+  # nos PRs, rode `make integracao e2e-app` no WSL antes de abrir.
+  app:
+    if: github.event_name != 'pull_request'
+    needs: [lint]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18.1-alpine@sha256:aa6eb304ddb6dd26df23d05db4e5cb05af8951cda3e0dc57731b771e0ef4ab29
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Dependências e build do app (Node fixado)
+        run: make install build-app
+      - name: Integração e contrato
+        run: make integracao
+      - name: Playwright
+        run: make e2e-app
+      - name: Relatório do Playwright
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright
+          path: |
+            tests/e2e-app/relatorio
+            tests/e2e-app/resultados
+          retention-days: 7
