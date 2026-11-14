@@ -26,7 +26,7 @@
           </span>
         </div>
         <div v-if="projecao" class="linha suave">
-          <span class="cresce">Budget da semana</span>
+          <span class="cresce">Orçamento da semana</span>
           <span :class="projecao.restante < 0 ? 'ruim' : 'ok'" class="num">
             {{ projecao.restante < 0 ? 'passou' : 'sobrou' }} {{ formatarDinheiro(Math.abs(projecao.restante)) }}
           </span>

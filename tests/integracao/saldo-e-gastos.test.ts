@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import * as contrato from '../../shared/contratos/api.ts'
 import { iniciarAmbiente, type Ambiente } from '../apoio/ambiente.ts'
+import { hojeSP, inicioDoDiaSP, somarDias } from '../../shared/utils/datas.ts'
 import { clienteApi, conforme } from '../apoio/api.ts'
 
 let amb: Ambiente
@@ -36,6 +37,43 @@ describe('saldo e orçamento', () => {
     assert.equal(s.budget.configurado, true)
     assert.equal(s.budget.saldo, 100_000 - 12_345)
     assert.equal(s.ajustes.length, 1)
+  })
+
+  it('saldo com data passada (#13): a recarga do dia 1 do mês anterior monta o orçamento × gasto dele', async () => {
+    const hoje = hojeSP()
+    const mesAnterior = somarDias(`${hoje.slice(0, 7)}-01`, -1).slice(0, 7)
+    const r = await api.post('/api/saldo', { saldo: 80_000, dia: `${mesAnterior}-01` })
+    assert.equal(r.status, 200)
+    const s = conforme(contrato.saldo, await api.get('/api/saldo'))
+    assert.equal(new Date(s.ajustes[0]!.em).getTime(), inicioDoDiaSP(`${mesAnterior}-01`).getTime())
+
+    // Compra do dia 10 daquele mês (como a importação deixaria).
+    const id = await compraFinalizada(12_000)
+    assert.equal((await api.patch(`/api/compras/${id}`, { data: `${mesAnterior}-10` })).status, 200)
+    const g = conforme(contrato.gastos, await api.get(`/api/gastos?periodo=${mesAnterior}`))
+    const semanas = g.semanas!
+    assert.ok(semanas.every((x) => x.budget !== null && x.situacao === 'passada'))
+    assert.equal(
+      semanas.reduce((t, x) => t + x.gasto, 0),
+      12_000,
+    )
+    const doDia10 = semanas.find((x) => x.inicio <= `${mesAnterior}-10` && `${mesAnterior}-10` <= x.fim)!
+    assert.equal(doDia10.gasto, 12_000)
+    // A primeira semana tem a parte dela dos 80.000 (o saldo antes de qualquer compra).
+    assert.ok(Math.abs(semanas[0]!.budget! - 80_000 / semanas.length) <= 1)
+    // Sem ajuste mais novo, o saldo de agora é o do dia 1 menos o que se gastou desde então.
+    assert.equal(s.budget.saldo, 80_000)
+    assert.equal(conforme(contrato.saldo, await api.get('/api/saldo')).budget.saldo, 80_000 - 12_000)
+  })
+
+  it('saldo com data: dia de hoje vale agora; futuro e inválido são recusados', async () => {
+    const hoje = hojeSP()
+    assert.equal((await api.post('/api/saldo', { saldo: 1_000, dia: somarDias(hoje, 1) })).status, 400)
+    assert.equal((await api.post('/api/saldo', { saldo: 1_000, dia: '2026-02-30' })).status, 400)
+    const antes = Date.now()
+    assert.equal((await api.post('/api/saldo', { saldo: 1_000, dia: hoje })).status, 200)
+    const s = conforme(contrato.saldo, await api.get('/api/saldo'))
+    assert.ok(new Date(s.ajustes[0]!.em).getTime() >= antes - 5_000)
   })
 })
 

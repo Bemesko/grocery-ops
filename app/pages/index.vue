@@ -135,20 +135,33 @@
     <footer v-if="preparando && dados" class="rodape cartao">
       <p class="resumo-sel">
         <strong>{{ selecionados.length }}</strong> {{ selecionados.length === 1 ? 'item' : 'itens' }} nesta ida
-        <span v-if="projecao" class="suave">· budget restante {{ formatarDinheiro(projecao.restante) }}</span>
+        <span v-if="projecao" class="suave">· orçamento restante {{ formatarDinheiro(projecao.restante) }}</span>
       </p>
-      <div v-for="e in estimativasMercados" :key="e.mercado.id" class="linha estimativa">
+      <div v-for="e in mercadosVisiveis" :key="e.mercado.id" class="linha estimativa">
         <span class="cresce">{{ e.mercado.nome }}</span>
         <span class="num">≈ {{ formatarDinheiro(e.total) }}</span>
         <span class="suave num">({{ e.cobertos }}/{{ selecionados.length }})</span>
         <button type="button" class="primario" @click="comecar(e.mercado.id, false)">Começar</button>
       </div>
-      <p v-if="comparacao" class="suave comparacao">
-        Nos {{ comparacao.itens }} itens com preço em todos:
-        <span v-for="(c, i) in comparacao.totais" :key="c.nome">
-          {{ i ? ' · ' : '' }}{{ c.nome }} <strong class="num">{{ formatarDinheiro(c.total) }}</strong>
-        </span>
-      </p>
+      <template v-if="comparacaoAberta || estimativasMercados.length < 2">
+        <ul v-if="comparacao" class="suave comparacao" aria-label="Comparação com o mais barato">
+          <li v-for="p in comparacao.pares" :key="p.mercado.id">
+            {{ p.mercado.nome }} × {{ comparacao.maisBarato.nome }}: {{ p.itens }} {{ p.itens === 1 ? 'item' : 'itens' }},
+            <span class="num">{{ formatarDinheiro(p.total) }} × {{ formatarDinheiro(p.totalMaisBarato) }}</span>
+            <span v-if="p.totalMaisBarato > 0" class="num"> (+{{ Math.round(((p.total - p.totalMaisBarato) / p.totalMaisBarato) * 100) }}%)</span>
+          </li>
+        </ul>
+        <p v-if="notaPorConteudo" class="suave comparacao">{{ notaPorConteudo }}</p>
+      </template>
+      <button
+        v-if="estimativasMercados.length >= 2"
+        type="button"
+        class="texto alternar"
+        :aria-expanded="comparacaoAberta"
+        @click="alternarComparacao"
+      >
+        {{ comparacaoAberta ? 'Mostrar menos ▴' : `Todos os ${estimativasMercados.length} mercados e a comparação ▾` }}
+      </button>
       <p v-if="!dados.mercados.length" class="suave">
         <NuxtLink to="/ajustes#mercados">Cadastre os mercados</NuxtLink> para começar uma compra.
       </p>
@@ -239,16 +252,38 @@ const estimativasMercados = computed(() =>
   }),
 )
 
-// Comparação justa: só os itens com preço em todos os mercados.
-const comparacao = computed(() => {
-  const mercados = dados.value?.mercados ?? []
-  if (mercados.length < 2) return null
-  const comuns = selecionados.value.filter((li) => mercados.every((m) => li.estimativas[m.id] !== undefined))
-  if (!comuns.length || comuns.length === selecionados.value.length) return null
-  return {
-    itens: comuns.length,
-    totais: mercados.map((m) => ({ nome: m.nome, total: comuns.reduce((s, li) => s + li.estimativas[m.id]!, 0) })),
-  }
+// Comparação par a par (#44): cada mercado contra o mais barato, nos itens que os dois têm.
+const comparacao = computed(() => compararMercados(selecionados.value, dados.value?.mercados ?? []))
+
+// Rodapé recolhível (#43): fechado, mostra só o mercado mais barato (ou o primeiro). A
+// escolha fica neste aparelho.
+const CHAVE_COMPARACAO = 'preparar-ida-comparacao-aberta'
+const comparacaoAberta = ref(false)
+onMounted(() => {
+  try {
+    comparacaoAberta.value = localStorage.getItem(CHAVE_COMPARACAO) === '1'
+  } catch {}
+})
+function alternarComparacao() {
+  comparacaoAberta.value = !comparacaoAberta.value
+  try {
+    localStorage.setItem(CHAVE_COMPARACAO, comparacaoAberta.value ? '1' : '0')
+  } catch {}
+}
+const mercadosVisiveis = computed(() => {
+  const todos = estimativasMercados.value
+  if (comparacaoAberta.value || todos.length < 2) return todos
+  const id = comparacao.value?.maisBarato.id
+  return [todos.find((e) => e.mercado.id === id) ?? [...todos].sort((a, b) => b.cobertos - a.cobertos)[0]!]
+})
+
+// Embalagens de tamanhos diferentes (#12): a estimativa daqueles itens é por kg/L.
+const notaPorConteudo = computed(() => {
+  const partes = (dados.value?.mercados ?? []).flatMap((m) => {
+    const n = selecionados.value.filter((li) => li.porConteudo.includes(m.id)).length
+    return n ? [`${m.nome} em ${n} ${n === 1 ? 'item' : 'itens'}`] : []
+  })
+  return partes.length ? `Estimado por kg/L (embalagem de outro tamanho): ${partes.join(', ')}.` : ''
 })
 
 async function adicionar(corpo: Record<string, unknown>) {
@@ -519,7 +554,21 @@ li.fora .cresce {
 }
 
 .comparacao {
-  margin-top: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.comparacao li {
+  list-style: none;
+}
+
+.comparacao li + li {
+  margin-top: 0.2rem;
+}
+
+.alternar {
+  margin-top: 0.4rem;
 }
 
 .comecar {

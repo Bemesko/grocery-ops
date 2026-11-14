@@ -2,7 +2,7 @@
 
 PWA de lista de compras e acompanhamento do carrinho no mercado. Roda no cluster k3s do homelab, em `https://grocery-ops.<sua-tailnet>`, e pode ser instalado no celular.
 
-**Estado:** v1 conforme [docs/produto-v1.md](docs/produto-v1.md): lista compartilhada, preparar a ida, modo mercado com budget do VR, resumo da compra, gastos do mês e importação de histórico por CSV.
+**Estado:** v1 conforme [docs/produto-v1.md](docs/produto-v1.md): lista compartilhada, preparar a ida, modo mercado com orçamento do VR, resumo da compra, gastos do mês e importação de histórico por CSV.
 
 ## Stack
 
@@ -18,7 +18,7 @@ app/            front (Vue): app.vue, pages/
 server/routes/  /healthz (probes do Kubernetes e e2e)
 server/api/     API (lista, itens, compras, saldo, gastos, importação)
 server/db/      migrações do Postgres
-shared/         código usado no front e na API (texto, busca, budget, tipos)
+shared/         código usado no front e na API (texto, busca, orçamento, tipos)
 docs/           especificação da v1 e modelo de CSV
 public/         estáticos (icon.svg → ícones do PWA)
 otel/           SDK do OpenTelemetry (pacote próprio, carregado com node --import)

@@ -18,7 +18,7 @@ export async function semanasComAtraso(sql: Sql, mes: string) {
 }
 
 /**
- * Saldo e semana de budget de hoje (docs/produto-v1.md, "Budget").
+ * Saldo e semana de budget de hoje (docs/produto-v1.md, "Orçamento").
  *
  * O ajuste de saldo pode ser feito em qualquer dia: ele só corrige o saldo. O gasto da
  * semana conta todas as compras dela, inclusive as feitas antes do ajuste (que já estão

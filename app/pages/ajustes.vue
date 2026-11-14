@@ -35,16 +35,23 @@
           <p v-else class="suave">Última semana do ciclo: o que sobrar passa para o próximo mês.</p>
         </template>
         <p v-else class="suave">
-          Informe o saldo somado dos VRs. O budget da semana é o saldo dividido pelas semanas que faltam até a
+          Informe o saldo somado dos VRs. O orçamento da semana é o saldo dividido pelas semanas que faltam até a
           recarga do dia 1.
         </p>
-        <form class="linha ajuste" @submit.prevent="ajustarSaldo">
-          <CampoValor v-model="saldoTexto" class="cresce" placeholder="Saldo de hoje (R$)" />
-          <button type="submit" class="primario" :disabled="parseDinheiro(saldoTexto) === null">Ajustar</button>
+        <form class="ajuste" @submit.prevent="ajustarSaldo">
+          <div class="linha">
+            <CampoValor v-model="saldoTexto" class="cresce" :placeholder="saldoDia === hoje ? 'Saldo de hoje (R$)' : 'Saldo do dia (R$)'" />
+            <button type="submit" class="primario" :disabled="parseDinheiro(saldoTexto) === null || !saldoDia">Ajustar</button>
+          </div>
+          <label class="linha dia-ajuste">
+            <span class="suave">Saldo do dia</span>
+            <input v-model="saldoDia" type="date" class="cresce" :max="hoje" aria-label="Dia do saldo" />
+          </label>
         </form>
         <p class="suave dica">
-          Ajuste quando quiser (depois da recarga, ou ao conferir o app do VR): os budgets são recalculados
-          na hora, e o que a semana já gastou continua contando nela.
+          Ajuste quando quiser (depois da recarga, ou ao conferir o app do VR): os orçamentos são recalculados
+          na hora, e o que a semana já gastou continua contando nela. Para um mês passado, informe o saldo do
+          dia da recarga (por exemplo, o dia 1): as compras daquele dia em diante saem dele.
         </p>
         <label for="dia-preferido">Dia de ir ao mercado</label>
         <select id="dia-preferido" :value="diaPreferidoAtual" @change="mudarDiaPreferido(($event.target as HTMLSelectElement).value)">
@@ -72,19 +79,11 @@
       <ul class="lista">
         <li v-for="m in mercados" :key="m.id">
           <input class="cresce" :value="m.nome" @change="renomearMercado(m, ($event.target as HTMLInputElement).value)" />
-          <select :value="m.tipo" class="tipo" @change="mudarTipo(m, ($event.target as HTMLSelectElement).value)">
-            <option value="varejo">Varejo</option>
-            <option value="atacado">Atacado</option>
-          </select>
           <button type="button" class="icone" aria-label="Apagar mercado" @click="apagarMercado(m)">🗑</button>
         </li>
       </ul>
       <form class="linha novo" @submit.prevent="criarMercado">
         <input v-model="novoMercado" class="cresce" placeholder="Novo mercado" />
-        <select v-model="novoTipo" class="tipo">
-          <option value="varejo">Varejo</option>
-          <option value="atacado">Atacado</option>
-        </select>
         <button type="submit" :disabled="!novoMercado.trim()">Adicionar</button>
       </form>
     </section>
@@ -214,9 +213,10 @@ interface Importacao {
 
 const saldo = ref<Saldo | null>(null)
 const saldoTexto = ref('')
+const hoje = hojeSP()
+const saldoDia = ref(hoje)
 const mercados = ref<Mercado[]>([])
 const novoMercado = ref('')
-const novoTipo = ref<'varejo' | 'atacado'>('varejo')
 const novaCategoria = ref('')
 const arquivo = ref('')
 const conteudo = ref('')
@@ -278,10 +278,12 @@ function diaCurto(dia: string) {
 async function ajustarSaldo() {
   const valor = parseDinheiro(saldoTexto.value)
   if (valor === null) return
-  const ok = await tentar(() => $fetch('/api/saldo', { method: 'POST', body: { saldo: valor } }))
+  const dia = saldoDia.value
+  const ok = await tentar(() => $fetch('/api/saldo', { method: 'POST', body: { saldo: valor, dia } }))
   if (!ok) return
   saldoTexto.value = ''
-  avisar('Saldo ajustado')
+  saldoDia.value = hoje
+  avisar(dia === hoje ? 'Saldo ajustado' : `Saldo de ${diaCurto(dia)} registrado`)
   await carregarSaldo()
 }
 
@@ -294,7 +296,7 @@ async function mudarDiaPreferido(valor: string) {
 }
 
 async function criarMercado() {
-  const ok = await tentar(() => $fetch('/api/mercados', { method: 'POST', body: { nome: novoMercado.value, tipo: novoTipo.value } }))
+  const ok = await tentar(() => $fetch('/api/mercados', { method: 'POST', body: { nome: novoMercado.value } }))
   if (!ok) return
   novoMercado.value = ''
   await carregarMercados()
@@ -302,10 +304,6 @@ async function criarMercado() {
 async function renomearMercado(m: Mercado, nome: string) {
   if (!nome.trim() || nome === m.nome) return
   await tentar(() => $fetch(`/api/mercados/${m.id}`, { method: 'PATCH', body: { nome } }))
-  await carregarMercados()
-}
-async function mudarTipo(m: Mercado, tipo: string) {
-  await tentar(() => $fetch(`/api/mercados/${m.id}`, { method: 'PATCH', body: { tipo } }))
   await carregarMercados()
 }
 async function apagarMercado(m: Mercado) {
@@ -385,6 +383,11 @@ section {
   margin-top: 0.75rem;
 }
 
+.dia-ajuste {
+  margin-top: 0.5rem;
+  font-weight: normal;
+}
+
 .dica {
   margin: 0.4rem 0 0;
 }
@@ -401,10 +404,6 @@ section {
 .lista select {
   min-height: 2.25rem;
   padding: 0.35rem 0.5rem;
-}
-
-.tipo {
-  width: auto;
 }
 
 .setas {

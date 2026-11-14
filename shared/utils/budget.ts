@@ -1,4 +1,4 @@
-// Regras de budget de docs/produto-v1.md ("Budget"). O servidor monta a base (saldo e
+// Regras de budget de docs/produto-v1.md ("Orçamento"). O servidor monta a base (saldo e
 // semana); o front projeta o efeito de uma compra a cada item registrado.
 
 export interface BaseBudget {
