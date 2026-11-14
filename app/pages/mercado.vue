@@ -39,7 +39,7 @@
           v-if="projecao"
           class="barra barra-compra"
           :class="{ estourou: projecao.restante < 0 }"
-          :title="`Budget do período: ${formatarDinheiro(projecao.budget)}`"
+          :title="`Orçamento do período: ${formatarDinheiro(projecao.budget)}`"
         >
           <span v-for="s in segmentos" :key="s.tipo" :class="['seg', s.tipo]" :style="{ width: `${s.largura}%` }" />
         </div>
@@ -59,11 +59,11 @@
           Último período do mês: sobram {{ formatarDinheiro(projecao.saldoApos) }} de saldo para o próximo ciclo.
         </p>
         <p v-else-if="previsao?.excedeu && previsao.proximasSemanas !== null" class="aviso info">
-          Pela estimativa, a lista toda passa do budget: próximas semanas ficariam com
+          Pela estimativa, a lista toda passa do orçamento: próximas semanas ficariam com
           {{ formatarDinheiro(previsao.proximasSemanas) }}.
         </p>
         <p v-if="!dados.budget.configurado" class="suave">
-          <NuxtLink to="/ajustes#saldo">Informe o saldo do VR</NuxtLink> para acompanhar o budget.
+          <NuxtLink to="/ajustes#saldo">Informe o saldo do VR</NuxtLink> para acompanhar o orçamento.
         </p>
       </header>
 

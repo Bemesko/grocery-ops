@@ -58,6 +58,30 @@ describe('lista', () => {
   })
 })
 
+describe('preparar a ida', () => {
+  it('mercados sem tipo; embalagens de tamanhos diferentes estimadas por kg (#12, #14)', async () => {
+    const a = await mercado('Atacado')
+    const b = await mercado('Variedade')
+    const mercados = conforme(contrato.respostaLista, await api.get('/api/lista')).mercados
+    assert.deepEqual(mercados.map((m) => Object.keys(m).sort()), [['id', 'nome'], ['id', 'nome']])
+    // Café: 1 kg a R$ 40 no atacado (antes) e 500 g a R$ 22 na variedade (mais recente).
+    for (const [m, preco, embalagem] of [
+      [a, 4_000, '1 kg'],
+      [b, 2_200, '500 g'],
+    ] as const) {
+      const c = await api.post<{ id: number }>('/api/compras', { mercadoId: m })
+      await api.post(`/api/compras/${c.corpo.id}/itens`, { nome: 'Café', categoriaId: 6, precoUnitario: preco, quantidade: 1, unidade: 'un', embalagem })
+      await api.post(`/api/compras/${c.corpo.id}/finalizar`, {})
+    }
+    await api.post('/api/lista', { nome: 'Café' })
+    const lista = conforme(contrato.respostaLista, await api.get('/api/lista'))
+    const cafe = lista.itens[0]!
+    // A embalagem habitual vem da primeira compra (1 kg): a variedade sai a R$ 44 o kg.
+    assert.deepEqual(cafe.estimativas, { [a]: 4_000, [b]: 4_400 })
+    assert.deepEqual(cafe.porConteudo, [b])
+  })
+})
+
 describe('compra', () => {
   it('começa, registra itens, finaliza com o total da nota e mostra o resumo', async () => {
     const m = await mercado()

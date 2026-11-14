@@ -26,7 +26,7 @@ export const baseBudget = z
   })
   .strict()
 
-export const mercado = z.object({ id: z.number().int(), nome: z.string(), tipo: z.enum(['atacado', 'varejo']) }).strict()
+export const mercado = z.object({ id: z.number().int(), nome: z.string() }).strict()
 
 export const listaItem = z
   .object({
@@ -42,6 +42,7 @@ export const listaItem = z
     criadoEm: instante,
     origem: z.enum(['app', 'alexa']),
     estimativas: z.record(z.string(), centavos),
+    porConteudo: z.array(z.number().int()),
   })
   .strict()
 

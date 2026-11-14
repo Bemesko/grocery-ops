@@ -81,3 +81,55 @@ test('preço digitado da direita para a esquerda', async ({ page }) => {
   await preco.pressSequentially('49')
   await expect(preco).toHaveValue('1,49')
 })
+
+test('preparar ida: comparação recolhível, par a par com o mais barato e por kg (#43, #44, #12)', async ({ page }) => {
+  const mercados: Record<string, number> = {}
+  for (const nome of ['Atacado', 'Padaria', 'Variedade']) {
+    mercados[nome] = (await api<{ id: number }>('POST', '/api/mercados', { nome })).id
+  }
+  // Preços anteriores: café (1 kg no atacado, 500 g na variedade) e pão (padaria e variedade).
+  const compras: [string, { nome: string; preco: number; embalagem?: string; categoriaId: number }[]][] = [
+    ['Atacado', [{ nome: 'Café', preco: 4_000, embalagem: '1 kg', categoriaId: CATEGORIA.mercearia }]],
+    ['Padaria', [{ nome: 'Pão', preco: 1_000, categoriaId: CATEGORIA.padaria }]],
+    [
+      'Variedade',
+      [
+        { nome: 'Café', preco: 2_200, embalagem: '500 g', categoriaId: CATEGORIA.mercearia },
+        { nome: 'Pão', preco: 1_200, categoriaId: CATEGORIA.padaria },
+      ],
+    ],
+  ]
+  for (const [mercado, itens] of compras) {
+    const { id } = await api<{ id: number }>('POST', '/api/compras', { mercadoId: mercados[mercado] })
+    for (const i of itens) {
+      await api('POST', `/api/compras/${id}/itens`, { ...i, precoUnitario: i.preco, quantidade: 1, unidade: 'un' })
+    }
+    await api('POST', `/api/compras/${id}/finalizar`, {})
+  }
+  await api('POST', '/api/lista', { nome: 'Café' })
+  await api('POST', '/api/lista', { nome: 'Pão' })
+  await api('POST', '/api/lista/selecao', { modo: 'todos' })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: /Preparar ida/ }).click()
+  const rodape = page.locator('footer.rodape')
+  // Fechado: só o mais barato, com o botão de começar.
+  await expect(rodape.getByRole('button', { name: 'Começar' })).toHaveCount(1)
+  await expect(rodape).toContainText('Atacado')
+  await expect(rodape).not.toContainText('Variedade')
+
+  await rodape.getByRole('button', { name: /Todos os 3 mercados/ }).click()
+  await expect(rodape.getByRole('button', { name: 'Começar' })).toHaveCount(3)
+  const comparacao = rodape.getByRole('list', { name: 'Comparação com o mais barato' })
+  // Café na embalagem habitual (1 kg, a da primeira compra): variedade 500 g a 22,00 → 44,00.
+  await expect(comparacao).toContainText('Variedade × Atacado: 1 item, R$ 44,00 × R$ 40,00 (+10%)')
+  await expect(comparacao).not.toContainText('Padaria ×')
+  await expect(rodape).toContainText('Estimado por kg/L (embalagem de outro tamanho): Variedade em 1 item.')
+
+  // A escolha fica lembrada no aparelho.
+  await page.reload()
+  await page.getByRole('button', { name: /Preparar ida/ }).click()
+  await expect(rodape.getByRole('button', { name: 'Começar' })).toHaveCount(3)
+  await rodape.getByRole('button', { name: 'Mostrar menos ▴' }).click()
+  await expect(rodape.getByRole('button', { name: 'Começar' })).toHaveCount(1)
+})

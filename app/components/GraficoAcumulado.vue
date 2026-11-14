@@ -1,6 +1,6 @@
 <!--
-  Gasto acumulado × budget acumulado ao longo das semanas do mês. Duas linhas no mesmo
-  eixo (R$): gasto (cheia, verde) até a semana atual e budget (tracejada, cinza) até o fim.
+  Gasto acumulado × orçamento acumulado ao longo das semanas do mês. Duas linhas no mesmo
+  eixo (R$): gasto (cheia, verde) até a semana atual e orçamento (tracejada, cinza) até o fim.
   Identidade por cor e por traço, com legenda e rótulo direto no fim de cada linha.
 -->
 <template>
@@ -11,7 +11,7 @@
       <polyline v-if="gastoAcum.length" :points="pontos(gastoAcum)" class="gasto" />
       <g v-for="(s, i) in semanas" :key="s.segunda">
         <circle v-if="budgetAcum[i] !== undefined" :cx="x(i)" :cy="y(budgetAcum[i]!)" r="4" class="ponto-budget">
-          <title>{{ rotulo(s) }} · budget acumulado {{ formatarDinheiro(budgetAcum[i]) }}</title>
+          <title>{{ rotulo(s) }} · orçamento acumulado {{ formatarDinheiro(budgetAcum[i]) }}</title>
         </circle>
         <circle v-if="gastoAcum[i] !== undefined" :cx="x(i)" :cy="y(gastoAcum[i]!)" r="4" class="ponto-gasto">
           <title>{{ rotulo(s) }} · gasto acumulado {{ formatarDinheiro(gastoAcum[i]) }}</title>
@@ -21,7 +21,7 @@
     </svg>
     <figcaption class="legenda">
       <span><i class="chave gasto" /> Gasto acumulado <strong class="num">{{ formatarDinheiro(gastoAcum.at(-1) ?? 0) }}</strong></span>
-      <span><i class="chave budget" /> Budget acumulado <strong class="num">{{ formatarDinheiro(budgetAcum.at(-1) ?? 0) }}</strong></span>
+      <span><i class="chave budget" /> Orçamento acumulado <strong class="num">{{ formatarDinheiro(budgetAcum.at(-1) ?? 0) }}</strong></span>
     </figcaption>
   </figure>
 </template>
@@ -56,7 +56,7 @@ function rotuloCurto(s: SemanaEvolucao) {
 
 const descricao = computed(
   () =>
-    `Gasto acumulado ${formatarDinheiro(gastoAcum.value.at(-1) ?? 0)} contra budget acumulado ` +
+    `Gasto acumulado ${formatarDinheiro(gastoAcum.value.at(-1) ?? 0)} contra orçamento acumulado ` +
     `${formatarDinheiro(budgetAcum.value.at(-1) ?? 0)} em ${props.semanas.length} semanas`,
 )
 </script>

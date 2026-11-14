@@ -15,7 +15,7 @@ A lista de compras e os preços do mercado se informam. A lista diz o que compra
 ## Critérios de sucesso
 
 1. Usamos o app em toda compra.
-2. Usamos o budget com consciência: estourar às vezes é intencional (compras que duram o mês), mas a decisão é tomada vendo o impacto.
+2. Usamos o orçamento com consciência: estourar às vezes é intencional (compras que duram o mês), mas a decisão é tomada vendo o impacto.
 3. O total do app bate com o da nota dentro de ±5%. Na v1 isso é medido pelo campo opcional "total da nota" ao fechar a compra.
 
 ## Story map
@@ -25,8 +25,8 @@ Etapas, na ordem do uso: **Anotar → Preparar a ida → No mercado → Fechar a
 | Etapa | v1 | v1.1 | v2 | v3 |
 | --- | --- | --- | --- | --- |
 | Anotar | item genérico com sugestão de nomes já usados; categoria lembrada; prioritário em 1 toque; sincronização entre celulares | | | sugestão de itens pelo padrão de recompra |
-| Preparar a ida | seleção "nesta ida"; estimativa por mercado lado a lado; budget restante | comparação por tamanho de embalagem (R$/kg, R$/L) | assistente "encaixar no budget" | |
-| No mercado | lista por corredor; registrar preço com 1 toque se não mudou; R$/kg + peso; ↑↓; item fora da lista; total vs budget; transbordo | | ordem de corredores por mercado | foto da etiqueta; código de barras; offline |
+| Preparar a ida | seleção "nesta ida"; estimativa por mercado lado a lado; orçamento restante | comparação por tamanho de embalagem (R$/kg, R$/L) | assistente "encaixar no orçamento" | |
+| No mercado | lista por corredor; registrar preço com 1 toque se não mudou; R$/kg + peso; ↑↓; item fora da lista; total vs orçamento; transbordo | | ordem de corredores por mercado | foto da etiqueta; código de barras; offline |
 | Fechar a compra | total da nota; resumo da compra | leitura do QR da NFC-e (SC), conferência do total e casamento dos itens da nota com os anotados; compra só pela nota | | outros estabelecimentos pagos com VR |
 | Analisar | gasto do mês; itens que mais pesaram; gasto por categoria; histórico de preço do item; importação de histórico (CSV) | | evolução de preço; inflação da cesta | |
 
@@ -58,10 +58,11 @@ A lista é o que a casa precisa; a ida ao mercado leva só uma parte. Preparar a
 
 - Botão "Preparar ida": cada item ganha um marcador "nesta ida". Os prioritários já vêm marcados.
 - Rodapé fixo, atualizado a cada toque:
-  - `12 itens · Atacado ≈ R$ 312 (11/12) · Variedade ≈ R$ 341 (9/12)`
-  - `Nos 9 itens com preço nos dois: Atacado R$ 210 · Variedade R$ 236`
-  - `Budget restante da semana: R$ 420`
-- Botões "Começar no Atacado" / "Começar na Variedade" (um por mercado cadastrado).
+  - `12 itens nesta ida · orçamento restante R$ 420`
+  - por mercado, a estimativa e a cobertura, com o botão "Começar": `Atacado ≈ R$ 312 (11/12)`.
+- Com dois mercados ou mais, o rodapé é **recolhível**: fechado, mostra só o mercado mais barato (ver "Comparação par a par"); aberto, todos os mercados, a comparação e a nota de embalagens. Aberto ou fechado fica lembrado no aparelho.
+  - Comparação, uma linha por mercado contra o mais barato, só nos itens que os dois têm: `Variedade × Atacado: 9 itens, R$ 236 × R$ 210 (+12%)`. Aparece sempre que dois mercados têm algum item em comum, mesmo que nenhum item tenha preço em todos.
+  - Embalagens de tamanhos diferentes: `Estimado por kg/L (embalagem de outro tamanho): Atacado em 2 itens.`
 - Pular a preparação e tocar direto em "Começar compra" leva a lista inteira.
 - A seleção fica no servidor: dá para preparar num celular e comprar no outro.
 
@@ -70,9 +71,9 @@ A lista é o que a casa precisa; a ida ao mercado leva só uma parte. Preparar a
 - Cabeçalho fixo:
   - total do carrinho;
   - "faltam ≈ R$ 85 (4 itens)": estimativa dos itens selecionados ainda fora do carrinho;
-  - restante do budget, em verde/amarelo/vermelho;
-  - barra do budget da semana em três trechos: o que está no carrinho e era da lista, o que está no carrinho e é fora da lista, e a estimativa do que falta (mais clara); contorno vermelho quando passa do budget;
-  - linha de transbordo quando o total previsto passa do budget: `Se fechar assim: próximas 3 semanas com R$ 386,67 (era R$ 420)`.
+  - restante do orçamento, em verde/amarelo/vermelho;
+  - barra do orçamento da semana em três trechos: o que está no carrinho e era da lista, o que está no carrinho e é fora da lista, e a estimativa do que falta (mais clara); contorno vermelho quando passa do orçamento;
+  - linha de transbordo quando o total previsto passa do orçamento: `Se fechar assim: próximas 3 semanas com R$ 386,67 (era R$ 420)`.
 - Itens selecionados primeiro, por corredor. O resto da lista fica numa seção recolhida "Também na lista (5)"; comprar algo dela conta como item da lista.
 - Tocar num item abre uma folha:
   - um botão só, "Registrar": com o preço vazio, vale o último preço daquele item naquele mercado (a folha diz qual);
@@ -89,7 +90,7 @@ A lista é o que a casa precisa; a ida ao mercado leva só uma parte. Preparar a
 ### Fechar a compra
 
 - "Finalizar": campo opcional "total da nota".
-- Resumo: total e diferença para o budget; divergência entre a nota e a soma dos itens (se a nota foi informada); distribuição por categoria em barras; top 5 itens que mais pesaram; itens fora da lista (quantidade e R$); maiores altas e baixas.
+- Resumo: total e diferença para o orçamento; divergência entre a nota e a soma dos itens (se a nota foi informada); distribuição por categoria em barras; top 5 itens que mais pesaram; itens fora da lista (quantidade e R$); maiores altas e baixas.
 - **Total oficial**: com o total da nota (digitado ou lido da NFC-e), ele é o total da compra para o orçamento, o saldo, os Gastos e o histórico. As categorias e os itens continuam somando os itens; a diferença entre a nota e os itens aparece como a linha "Diferença da nota" nas categorias (em Gastos e no detalhe da compra), sem ser distribuída entre os itens. Sem nota, vale a soma dos itens.
 - Itens comprados saem da lista; os não comprados ficam, e a seleção "nesta ida" é limpa.
 - Histórico de compras: lista de compras finalizadas, com detalhe e edição (corrigir preço ou quantidade depois). "Excluir compra" apaga uma compra finalizada, com os itens e a nota dela; a lista não muda e não dá para desfazer (a compra em andamento se cancela).
@@ -115,7 +116,7 @@ A lista é o que a casa precisa; a ida ao mercado leva só uma parte. Preparar a
 Por mês (o ciclo do VR) ou por trimestre civil (T4 = out–dez), escolhidos num alternador:
 
 - total gasto e número de compras; no trimestre, média por mês e barras mês a mês (tocar abre o mês);
-- **semana a semana** (só no mês): budget × gasto de cada semana do ciclo, com o acumulado do mês num gráfico (gasto acumulado × budget acumulado). O budget de cada semana é reconstruído a partir do saldo (ver "Budget"); sem ajuste de saldo no mês, só o gasto;
+- **semana a semana** (só no mês): orçamento × gasto de cada semana do ciclo, com o acumulado do mês num gráfico (gasto acumulado × orçamento acumulado). O orçamento de cada semana é reconstruído a partir do saldo (ver "Orçamento"); sem ajuste de saldo no mês, só o gasto;
 - itens que mais pesaram: top 10 por valor, com % do total;
 - gasto por categoria, em barras; tocar numa categoria abre a distribuição de todos os itens dela no período;
 - % do gasto fora da lista (só compras em que isso é conhecido).
@@ -124,34 +125,34 @@ Detalhe do item: último preço em cada mercado e as últimas compras, com a emb
 
 ### Configurações
 
-- Mercados: nome e tipo (atacado/varejo). Criados pela interface; nomes não ficam no repo.
+- Mercados: só o nome. Criados pela interface; nomes não ficam no repo. (O tipo atacado/varejo saiu: não mudava nenhuma regra.)
 - Categorias: nome e ordem (arrastar). Seed inicial, na ordem dos corredores: Hortifruti, Padaria, Frios e laticínios, Congelados, Açougue e peixaria, Mercearia, Limpeza, Utilidades do lar, Higiene pessoal, Pet, Bebidas, Outros.
-- Saldo do VR: "ajustar saldo" (valor de agora) e histórico de ajustes. No dia 1, o ajuste registra a recarga.
-- Saldo do VR também define o **dia de ir ao mercado** (padrão: sexta), usado no budget semanal.
+- Saldo do VR: "ajustar saldo" e histórico de ajustes. No dia 1, o ajuste registra a recarga. O ajuste tem data (padrão hoje, nunca no futuro): hoje vale a partir de agora; um dia passado vale a partir do início dele. Assim dá para registrar a recarga de um mês antigo (ex.: saldo de 1/10) e, com as compras daquele mês importadas, ver o orçamento × gasto de cada semana dele em Gastos.
+- Saldo do VR também define o **dia de ir ao mercado** (padrão: sexta), usado no orçamento semanal.
 - Itens (tela própria, `/itens`): todos por categoria, com busca; seleção para mudar a categoria de vários de uma vez e para juntar vários num só (escolhendo o nome que fica); "possíveis duplicados" por nome parecido, com "são diferentes" para dispensar o par; apagar item que não está em nenhuma compra (o histórico da lista sai junto; com compras, é preciso apagar as compras antes). No detalhe do item: renomear, categoria, unidade, embalagem habitual, outros nomes e apagar.
 - Outros nomes de um item (ex.: "mandioca" para "Aipim"): a busca e a lista da Alexa acham o item por eles, e digitar um deles ao adicionar põe o item existente. Juntar dois itens guarda o nome do que some como outro nome do que fica.
 - Importar histórico (CSV).
-- **Ocultar valores**: o olho no canto do cabeçalho de todas as telas troca todo valor em R$ (saldo, budget, preços, totais, estimativas, referências) por `R$ •••••`. Percentuais, quantidades, barras e o formato do gráfico continuam; na folha de preço, o que se digita continua visível. A escolha fica no aparelho (cada celular decide o seu).
+- **Ocultar valores**: o olho no canto do cabeçalho de todas as telas troca todo valor em R$ (saldo, orçamento, preços, totais, estimativas, referências) por `R$ •••••`. Percentuais, quantidades, barras e o formato do gráfico continuam; na folha de preço, o que se digita continua visível. A escolha fica no aparelho (cada celular decide o seu).
 
 ## Regras de cálculo
 
 Datas e semanas em `America/Sao_Paulo` (o container roda em UTC).
 
-### Budget
+### Orçamento
 
 - **Ciclo**: do dia 1 ao último dia do mês (o VR recarrega no dia 1).
 - **Semana**: de segunda a domingo. Uma compra feita na segunda ou na terça conta para a semana corrente; de quarta a domingo, para a semana seguinte. As compras da semana W são, então, as feitas de quarta (W − 5) a terça (W + 1).
 - **Dia preferencial** `P` (configurável, padrão sexta): o dia em que a casa costuma ir ao mercado. A semana pertence ao ciclo do mês em que cai o dia `P` da sua janela de compras.
 - **Dinheiro do mês da compra**: se a semana de uma compra é de outro ciclo, a compra conta no próprio mês (o dinheiro é o dele). No fim do mês, vai para a última semana do ciclo.
-- **Ida atrasada**: os dias do começo do mês cuja semana teve a ida no mês anterior (ex.: nov/2026 com sexta, de domingo 1/11 a terça 3/11, semana de 2/11 com ida em 30/10). Se há compra (finalizada ou em andamento) nesses dias, a ida do mês anterior atrasou: esses dias viram uma **semana a mais** no início do ciclo, com budget próprio (novembro passa de 4 para 5 semanas). Sem compra neles, não existe essa semana e os dias entram na primeira semana do mês.
+- **Ida atrasada**: os dias do começo do mês cuja semana teve a ida no mês anterior (ex.: nov/2026 com sexta, de domingo 1/11 a terça 3/11, semana de 2/11 com ida em 30/10). Se há compra (finalizada ou em andamento) nesses dias, a ida do mês anterior atrasou: esses dias viram uma **semana a mais** no início do ciclo, com orçamento próprio (novembro passa de 4 para 5 semanas). Sem compra neles, não existe essa semana e os dias entram na primeira semana do mês.
 - **Saldo atual** `S` = último ajuste − compras finalizadas depois dele.
 - `G` = todas as compras finalizadas da semana atual, inclusive as feitas antes do último ajuste.
-- `S0 = S + G`: o saldo no início da semana. O saldo pode ser ajustado em qualquer dia e os budgets são recalculados na hora; como `G` continua contando o que a semana já gastou, o ajuste não devolve esse dinheiro à semana atual.
+- `S0 = S + G`: o saldo no início da semana. O saldo pode ser ajustado em qualquer dia e os orçamentos são recalculados na hora; como `G` continua contando o que a semana já gastou, o ajuste não devolve esse dinheiro à semana atual.
 - `N` = semanas do ciclo a partir da atual, inclusive.
-- **Budget da semana** `B = S0 / N`. O que sobra se redistribui sozinho, porque cada semana recalcula a partir do saldo.
+- **Orçamento da semana** `B = S0 / N`. O que sobra se redistribui sozinho, porque cada semana recalcula a partir do saldo.
 - **Restante** = `B − G − carrinho`.
 - **Transbordo**: se `G + carrinho > B` e `N > 1`, as próximas semanas ficam com `(S0 − G − carrinho) / (N − 1)`. Na última semana do ciclo, mostrar quanto do saldo passa para o próximo ciclo. Se `carrinho > S`, avisar que falta saldo no VR.
-- **Semana a semana (Gastos)**: com `Sf` = saldo depois do que o ciclo já gastou (último ajuste do mês − compras finalizadas depois dele), o budget da semana i é `(Sf + gasto da semana i em diante) / (semanas de i até o fim)`. As semanas futuras dividem `Sf` igualmente; enquanto a semana atual não tem compra, o budget dela fica reservado.
+- **Semana a semana (Gastos)**: com `Sf` = saldo depois do que o ciclo já gastou (último ajuste do mês − compras finalizadas depois dele), o orçamento da semana i é `(Sf + gasto da semana i em diante) / (semanas de i até o fim)`. As semanas futuras dividem `Sf` igualmente; enquanto a semana atual não tem compra, o orçamento dela fica reservado.
 
 Exemplo (novembro/2026, sexta): as idas são nos dias 6, 13, 20 e 27; a de sexta 27 vale para a semana de 30/11 e sai do saldo de novembro; uma compra no domingo dia 1 é uma ida atrasada (a de 30/10): vira a semana de 2/11 e novembro fica com 5 semanas. No domingo dia 8, com R$ 660 de saldo depois da ida de sexta 6, as próximas 3 semanas ficam com `660 / 3 = R$ 220` cada.
 
@@ -160,10 +161,10 @@ Exemplo (novembro/2026, sexta): as idas são nos dias 6, 13, 20 e 27; a de sexta
 A comparação ignora marca. O tamanho da embalagem entra quando é conhecido (ver "Embalagem e reduflação").
 
 - **Preço de referência** de um item num mercado: o preço unitário (R$/un ou R$/kg) da compra mais recente desse item nesse mercado.
-- **Embalagens diferentes**: se o item tem embalagem habitual e a referência é de outro tamanho comparável (ex.: 800 g × 1 kg), o preço de referência é levado para a embalagem habitual pelo preço por kg/L/un.
+- **Embalagens diferentes**: as referências de um item nos vários mercados são levadas para a mesma embalagem pelo preço por kg/L/un, quando os tamanhos são comparáveis (ex.: 800 g × 1 kg). A embalagem base é a habitual do item; sem ela, a da compra mais recente com embalagem. O "Preparar a ida" diz em quantos itens de cada mercado isso aconteceu.
 - **Quantidade estimada**: a da lista; senão a da última compra do item (útil para kg); senão 1.
 - **Estimativa no mercado M**: soma dos itens com referência em M, com a cobertura (`11/12`).
-- **Comparação justa**: a mesma soma restrita aos itens com referência em todos os mercados comparados.
+- **Comparação par a par**: o **mais barato** é o mercado de menor índice de preço, a média, nos itens dele que têm referência em pelo menos dois mercados, de (estimativa dele ÷ menor estimativa do item); empate: o de mais itens, depois o nome. Cada outro mercado é comparado com ele só nos itens que os dois têm.
 - **"Faltam ≈" no modo mercado**: referência no mercado atual; sem ela, a do outro mercado; itens sem nenhuma referência ficam fora e são contados.
 
 ### ↑↓ do preço
@@ -185,7 +186,7 @@ Dinheiro em centavos (inteiro) no banco e na API. Quantidade com 3 casas (peso e
 
 ```text
 categoria      id, nome (único), ordem
-mercado        id, nome (único), tipo [atacado|varejo], cnpj (único, aprendido da nota), criado_em
+mercado        id, nome (único), cnpj (único, aprendido da nota), criado_em
 item           id, nome, nome_normalizado (único: minúsculo, sem acento, espaços colapsados),
                categoria_id, unidade [un|kg], embalagem_qtd, embalagem_unidade [g|kg|ml|l|un] (habitual),
                criado_em
@@ -237,12 +238,12 @@ Colunas, uma linha por item comprado:
 
 Modelo com dados fictícios: [importacao-modelo.csv](importacao-modelo.csv). Planilhas exportam CSV com vírgula como separador decimal entre aspas, como no modelo; o importador também aceita `;` como separador de colunas (padrão do Excel em pt-BR).
 
-Linhas com o mesmo `data` + `mercado` (+ `compra`) formam uma compra. Fluxo: enviar o arquivo em Configurações → prévia (compras, itens e mercados novos, erros por linha) → confirmar. Cada importação pode ser desfeita inteira. Compras com data anterior ao último ajuste de saldo não mexem no saldo.
+Linhas com o mesmo `data` + `mercado` (+ `compra`) formam uma compra. Fluxo: enviar o arquivo em Configurações → prévia (compras, itens e mercados novos, erros por linha) → confirmar. Cada importação pode ser desfeita inteira. Compras finalizadas antes do último ajuste de saldo não mexem no saldo (as importadas contam como finalizadas ao meio-dia da data delas); para um mês passado, ajuste o saldo com a data da recarga antes ou depois de importar.
 
 ## Fora da v1
 
 - **v1.1** (feita): NFC-e de SC, ver "Nota fiscal (NFC-e)". O spike (nov/2026) mostrou que a página do QR (`NFCe_Detalhes.aspx?rq=…`) abre no servidor com um GET simples, no layout nacional do DANFE NFC-e; algumas notas caem numa verificação Cloudflare Turnstile (`SecurityVerify.aspx`), e a consulta pela chave de acesso (`/nfce/consulta`) também cai nela para essas notas; o XML exige login no SAT; a consulta pública limita requisições por IP.
-- **v2**: ordem de corredores por mercado; assistente "encaixar no budget"; evolução de preço e inflação da cesta (por kg/L quando houver embalagem).
+- **v2**: ordem de corredores por mercado; assistente "encaixar no orçamento"; evolução de preço e inflação da cesta (por kg/L quando houver embalagem).
 - **v3**: sugestão de itens pelo padrão de recompra; foto da etiqueta e código de barras; outros estabelecimentos pagos com VR (padaria, açougue, sacolão); modo offline.
 
 ## Decisões técnicas
@@ -252,4 +253,4 @@ Linhas com o mesmo `data` + `mercado` (+ `compra`) formam uma compra. Fluxo: env
 - **Migrações**: SQL versionado em [server/db/migracoes.ts](../server/db/migracoes.ts), aplicado na subida com advisory lock. O driver é o `postgres` (porsager), sem ORM.
 - **Desenvolvimento local**: `make db` sobe um Postgres em container; `make dev` e `make run` apontam para ele.
 - **Busca de nomes parecidos**: roda no cliente sobre a lista completa de itens ([shared/utils/busca.ts](../shared/utils/busca.ts)), sem extensão no Postgres.
-- **API**: rotas REST em `server/api` por recurso (`lista`, `itens`, `compras`, `mercados`, `categorias`, `saldo`, `gastos`, `importacao`). Estimativas e saldo saem do servidor; a projeção do budget ([shared/utils/budget.ts](../shared/utils/budget.ts)) roda nos dois lados, para o mercado atualizar a cada item.
+- **API**: rotas REST em `server/api` por recurso (`lista`, `itens`, `compras`, `mercados`, `categorias`, `saldo`, `gastos`, `importacao`). Estimativas e saldo saem do servidor; a projeção do orçamento ([shared/utils/budget.ts](../shared/utils/budget.ts)) roda nos dois lados, para o mercado atualizar a cada item.

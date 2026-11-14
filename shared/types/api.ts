@@ -14,7 +14,6 @@ export interface Categoria {
 export interface Mercado {
   id: number
   nome: string
-  tipo: 'atacado' | 'varejo'
 }
 
 export interface PrecoReferencia {
@@ -58,6 +57,8 @@ export interface ListaItem {
   origem: 'app' | 'alexa'
   /** Estimativa por mercado (chave = id do mercado), em centavos. */
   estimativas: Record<string, number>
+  /** Mercados cuja estimativa foi convertida por kg/L (embalagem de outro tamanho, #12). */
+  porConteudo: number[]
 }
 
 export interface RespostaLista {

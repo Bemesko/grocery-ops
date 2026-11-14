@@ -226,4 +226,11 @@ export const migracoes: { id: string; sql: string }[] = [
       group by c.id;
     `,
   },
+  {
+    // #14: atacado/varejo era só um rótulo, sem regra nenhuma.
+    id: '009_sem_tipo_de_mercado',
+    sql: /* sql */ `
+      alter table mercado drop column tipo;
+    `,
+  },
 ]

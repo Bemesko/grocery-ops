@@ -47,7 +47,7 @@ export function validarDia(texto: unknown): string | null {
 }
 
 // ---------------------------------------------------------------------------------------
-// Semanas de budget (docs/produto-v1.md, "Budget").
+// Semanas de budget (docs/produto-v1.md, "Orçamento").
 //
 // A semana é de segunda a domingo e é identificada pela segunda. Uma compra feita na
 // segunda ou na terça é da semana corrente; de quarta a domingo, da semana seguinte. Assim,

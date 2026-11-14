@@ -104,13 +104,13 @@
                 </span>
                 <span v-if="s.budget !== null && s.situacao !== 'futura'" class="diferenca" :class="s.gasto > s.budget ? 'sobe' : 'desce'">
                   {{ s.gasto > s.budget ? `+${formatarDinheiro(s.gasto - s.budget)} acima` : `${formatarDinheiro(s.budget - s.gasto)} abaixo` }}
-                  do budget
+                  do orçamento
                 </span>
               </div>
             </li>
           </ul>
           <p v-if="!temBudget" class="suave">
-            Sem ajuste de saldo neste mês: só o gasto. O budget aparece a partir de um
+            Sem ajuste de saldo neste mês: só o gasto. O orçamento aparece a partir de um
             <NuxtLink to="/ajustes#saldo">ajuste de saldo</NuxtLink> no mês.
           </p>
         </template>

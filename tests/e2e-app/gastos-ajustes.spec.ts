@@ -23,6 +23,25 @@ test('informar o saldo mostra o orçamento da semana', async ({ page }) => {
   await expect(page.locator('.cabecalho')).toContainText('Semana: R$')
 })
 
+test('saldo com data passada (#13): registra no dia escolhido', async ({ page }) => {
+  await page.goto('/ajustes')
+  await page.waitForLoadState('networkidle')
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  const primeiro = new Date(`${hoje.slice(0, 7)}-01T12:00:00Z`)
+  primeiro.setUTCMonth(primeiro.getUTCMonth() - 1)
+  const dia = primeiro.toISOString().slice(0, 10)
+  await page.getByLabel('Dia do saldo').fill(dia)
+  const campo = page.getByPlaceholder('Saldo do dia (R$)')
+  await campo.fill('800,00')
+  await expect(campo).toHaveValue('800,00')
+  await page.getByRole('button', { name: 'Ajustar' }).click()
+  await expect(page.getByText(`Saldo de ${dia.slice(8)}/${dia.slice(5, 7)} registrado`)).toBeVisible()
+  const { ajustes } = await api<{ ajustes: { em: string; saldo: number }[] }>('GET', '/api/saldo')
+  expect(ajustes.map((a) => [new Date(a.em).toISOString(), a.saldo])).toEqual([[new Date(`${dia}T03:00:00Z`).toISOString(), 80_000]])
+  // O campo volta para hoje.
+  await expect(page.getByLabel('Dia do saldo')).toHaveValue(hoje)
+})
+
 test('gastos do mês por categoria', async ({ page }) => {
   await compraFinalizada('Detergente', 2_500, 7)
   await compraFinalizada('Arroz', 1_000, CATEGORIA.mercearia)
