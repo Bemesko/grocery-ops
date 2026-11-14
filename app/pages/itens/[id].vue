@@ -75,12 +75,31 @@
         </div>
       </form>
 
+      <h2>Outros nomes</h2>
+      <p class="suave">A busca e a lista da Alexa também acham o item por estes nomes.</p>
+      <div class="chips">
+        <button v-for="a in d.item.aliases" :key="a" type="button" class="chip" :aria-label="`Tirar ${a}`" @click="tirarAlias(a)">
+          {{ a }} ✕
+        </button>
+      </div>
+      <form class="linha" @submit.prevent="adicionarAlias">
+        <input v-model="novoAlias" class="cresce" placeholder="ex.: mandioca" maxlength="80" />
+        <button type="submit" :disabled="!novoAlias.trim()">Adicionar</button>
+      </form>
+
       <h2>Juntar com outro item</h2>
       <p class="suave">
         Para duplicados (ex.: “Pão de forma” e “Pao forma”): as compras e a lista de
         <strong>{{ d.item.nome }}</strong> passam para o item escolhido, e este some.
       </p>
       <BuscaItem :itens="outrosItens" placeholder="Juntar em…" @escolher="juntar" @novo="() => avisar('Escolha um item existente')" />
+
+      <h2>Apagar</h2>
+      <p v-if="d.item.emCompras" class="suave">
+        O item aparece em {{ d.item.emCompras }} {{ d.item.emCompras === 1 ? 'compra' : 'compras' }}: para apagá-lo,
+        apague {{ d.item.emCompras === 1 ? 'a compra' : 'as compras' }} antes.
+      </p>
+      <button v-else type="button" class="botao perigo" @click="apagarItem">Apagar item</button>
     </template>
   </main>
 </template>
@@ -105,7 +124,16 @@ interface CompraDoItem {
 }
 
 interface Detalhe {
-  item: { id: number; nome: string; categoriaId: number; unidade: Unidade; categoria: string; embalagem: Embalagem | null }
+  item: {
+    id: number
+    nome: string
+    categoriaId: number
+    unidade: Unidade
+    categoria: string
+    embalagem: Embalagem | null
+    aliases: string[]
+    emCompras: number
+  }
   ultimoPorMercado: CompraDoItem[]
   compras: CompraDoItem[]
 }
@@ -144,6 +172,30 @@ onMounted(() => {
 })
 
 const outrosItens = computed(() => itens.value.filter((i) => i.id !== id))
+
+const novoAlias = ref('')
+
+async function adicionarAlias() {
+  const alias = novoAlias.value.trim()
+  const ok = await tentar(() => $fetch(`/api/itens/${id}/aliases`, { method: 'POST', body: { alias } }))
+  if (!ok) return
+  novoAlias.value = ''
+  await carregar()
+}
+
+async function tirarAlias(alias: string) {
+  await tentar(() => $fetch(`/api/itens/${id}/aliases`, { method: 'DELETE', query: { alias } }))
+  await carregar()
+}
+
+async function apagarItem() {
+  if (!d.value || !confirm(`Apagar “${d.value.item.nome}”? Ele sai também da lista. Não dá para desfazer.`)) return
+  const ok = await tentar(() => $fetch(`/api/itens/${id}`, { method: 'DELETE' }))
+  if (!ok) return
+  avisar('Item apagado')
+  await recarregarItens()
+  await navigateTo('/itens', { replace: true })
+}
 
 function dataCurta(dia: string) {
   const [a, m, dd] = dia.split('-')

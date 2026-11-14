@@ -27,3 +27,17 @@ describe('itemParaTexto', () => {
     assert.equal(itemParaTexto('', itens), null)
   })
 })
+
+describe('itemParaTexto com outros nomes', () => {
+  const comAliases = [
+    { id: 1, nome: 'Aipim', aliases: ['Mandioca', 'Macaxeira'] },
+    { id: 2, nome: 'Refrigerante', aliases: ['Refri'] },
+  ]
+
+  it('casa pelo outro nome, exato ou quase igual', () => {
+    assert.equal(itemParaTexto('mandioca', comAliases)?.id, 1)
+    assert.equal(itemParaTexto('macaxeiras', comAliases)?.id, 1)
+    assert.equal(itemParaTexto('refri', comAliases)?.id, 2)
+    assert.equal(itemParaTexto('batata', comAliases), null)
+  })
+})

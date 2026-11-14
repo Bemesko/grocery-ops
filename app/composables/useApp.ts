@@ -72,7 +72,11 @@ export function useCategorias() {
   }
   const ordem = computed(() => new Map(categorias.value.map((c) => [c.id, c.ordem])))
   const nome = computed(() => new Map(categorias.value.map((c) => [c.id, c.nome])))
-  return { categorias, recarregar, ordem, nome }
+  /** Categoria padrão de item novo: "Outros" (ou a última, se não houver). */
+  const outros = computed(
+    () => categorias.value.find((c) => normalizarNome(c.nome) === 'outros')?.id ?? categorias.value.at(-1)?.id ?? null,
+  )
+  return { categorias, recarregar, ordem, nome, outros }
 }
 
 /** Agrupa por categoria, na ordem dos corredores. */

@@ -31,6 +31,10 @@ export interface ItemResumo {
   categoriaId: number
   unidade: Unidade
   usos: number
+  /** Linhas de compra com o item: com alguma, o item não pode ser apagado. */
+  compras: number
+  /** Outros nomes do item (busca e lista da Alexa). */
+  aliases: string[]
   /** Embalagem habitual (opcional): base das estimativas quando os mercados vendem tamanhos diferentes. */
   embalagem: Embalagem | null
   ultimaQuantidade: number | null
@@ -45,6 +49,8 @@ export interface ListaItem {
   categoriaId: number
   unidade: Unidade
   quantidade: string | null
+  /** Marca ou variante desejada (ex.: "integral 1 L"). */
+  variante: string | null
   prioritario: boolean
   nestaIda: boolean
   criadoEm: string
@@ -119,6 +125,7 @@ export interface PendenteMercado {
   categoriaId: number
   unidade: Unidade
   quantidade: string | null
+  variante: string | null
   prioritario: boolean
   nestaIda: boolean
   estimativa: number | null

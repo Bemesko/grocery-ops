@@ -5,8 +5,10 @@ export default defineEventHandler(async (): Promise<ItemResumo[]> => {
   const sql = await useDb()
   const itens = await sql`
     select i.id, i.nome, i.categoria_id, i.unidade, i.embalagem_qtd, i.embalagem_unidade,
+      (select count(*) from compra_item ci where ci.item_id = i.id) as compras,
       (select count(*) from compra_item ci where ci.item_id = i.id)
-        + (select count(*) from lista_item li where li.item_id = i.id) as usos
+        + (select count(*) from lista_item li where li.item_id = i.id) as usos,
+      coalesce((select array_agg(a.alias order by a.alias) from item_alias a where a.item_id = i.id), '{}') as aliases
     from item i order by i.nome
   `
   const refs = await referencias(sql)
@@ -22,7 +24,9 @@ export default defineEventHandler(async (): Promise<ItemResumo[]> => {
     nome: i.nome as string,
     categoriaId: i.categoriaId as number,
     unidade: i.unidade as ItemResumo['unidade'],
-    usos: i.usos as number,
+    usos: Number(i.usos),
+    compras: Number(i.compras),
+    aliases: i.aliases as string[],
     embalagem: embalagemDe(i.embalagemQtd, i.embalagemUnidade),
     ultimaQuantidade: quantidades.get(i.id as number) ?? null,
     precos: precos.get(i.id as number) ?? {},

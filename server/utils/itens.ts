@@ -24,7 +24,13 @@ export async function resolverItem(
   const nome = entrada.nome ? limparNome(entrada.nome) : ''
   if (!nome) erro(400, 'nome é obrigatório')
   const chave = normalizarNome(nome)
-  const [existente] = await sql`select id, nome, categoria_id, unidade from item where nome_normalizado = ${chave}`
+  const [existente] = await sql`
+    select i.id, i.nome, i.categoria_id, i.unidade from item i
+    where i.nome_normalizado = ${chave}
+      or i.id = (select item_id from item_alias where alias_normalizado = ${chave})
+    order by (i.nome_normalizado = ${chave}) desc
+    limit 1
+  `
   if (existente) return existente as unknown as ItemBanco
   if (!entrada.categoriaId) erro(422, 'Escolha a categoria do item novo', { precisaCategoria: true })
   const [categoria] = await sql`select id from categoria where id = ${entrada.categoriaId}`
@@ -49,6 +55,13 @@ export async function juntarItem(tx: Sql, origem: number, destino: number) {
   if (encontrados.length !== 2) erro(404, 'Item não encontrado')
   await tx`update compra_item set item_id = ${destino} where item_id = ${origem}`
   await tx`update item_codigo set item_id = ${destino} where item_id = ${origem}`
+  // O nome do item que some vira outro nome do destino (e os aliases dele vão junto).
+  await tx`update item_alias set item_id = ${destino} where item_id = ${origem}`
+  await tx`
+    insert into item_alias (alias_normalizado, alias, item_id)
+    select nome_normalizado, nome, ${destino} from item where id = ${origem}
+    on conflict (alias_normalizado) do update set item_id = excluded.item_id
+  `
   const [abertoOrigem] = await tx`select id, prioritario, nesta_ida from lista_item where item_id = ${origem} and status = 'aberto'`
   const [abertoDestino] = await tx`select id from lista_item where item_id = ${destino} and status = 'aberto'`
   if (abertoOrigem && abertoDestino) {

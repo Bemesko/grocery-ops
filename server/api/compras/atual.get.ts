@@ -13,7 +13,7 @@ export default defineEventHandler(async (): Promise<RespostaCompraAtual> => {
   const jaPegos = new Set(listaNoCarrinho.map((l) => l.listaItemId as number))
   const lista = await sql`
     select li.id as lista_item_id, li.item_id, i.nome, i.categoria_id, i.unidade, li.quantidade,
-      li.prioritario, li.nesta_ida
+      li.prioritario, li.nesta_ida, li.variante
     from lista_item li join item i on i.id = li.item_id
     where li.status = 'aberto'
     order by li.prioritario desc, i.nome

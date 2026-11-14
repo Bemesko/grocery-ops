@@ -140,6 +140,7 @@
       :inicial="folha.inicial"
       :precisa-categoria="folha.precisaCategoria"
       :embalagem-habitual="folha.embalagemHabitual"
+      :variante-sugerida="folha.variante"
       @fechar="folha = null"
       @salvar="salvarLinha"
       @remover="removerLinha"
@@ -204,6 +205,8 @@ interface Folha {
   inicial: Omit<DadosLinha, 'categoriaId'> | null
   precisaCategoria: boolean
   embalagemHabitual: Embalagem | null
+  /** Variante anotada na lista (sugestão). */
+  variante?: string | null
   /** Para onde salvar: item existente, nome novo ou linha já no carrinho. */
   itemId?: number
   nome?: string
@@ -293,6 +296,7 @@ function abrirPendente(p: PendenteMercado) {
     inicial: null,
     precisaCategoria: false,
     embalagemHabitual: item?.embalagem ?? null,
+    variante: p.variante,
     itemId: p.itemId,
   }
 }

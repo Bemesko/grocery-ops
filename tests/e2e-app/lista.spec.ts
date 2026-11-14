@@ -6,8 +6,36 @@ test('adiciona um item novo escolhendo a categoria', async ({ page }) => {
   await page.getByPlaceholder('Adicionar item…').fill('Abacaxi')
   await page.getByRole('button', { name: /Adicionar “Abacaxi”/ }).click()
   await page.getByRole('radio', { name: 'Hortifruti' }).click()
+  await page.getByRole('button', { name: 'Adicionar', exact: true }).click()
   const secao = page.locator('section', { has: page.getByRole('heading', { name: 'Hortifruti' }) })
   await expect(secao.getByText('Abacaxi')).toBeVisible()
+})
+
+test('item novo já vem com "Outros" marcado', async ({ page }) => {
+  await page.goto('/')
+  await page.getByPlaceholder('Adicionar item…').fill('Pilha AA')
+  await page.getByRole('button', { name: /Adicionar “Pilha AA”/ }).click()
+  await expect(page.getByRole('radio', { name: 'Outros' })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('button', { name: 'Adicionar', exact: true }).click()
+  const secao = page.locator('section', { has: page.getByRole('heading', { name: 'Outros' }) })
+  await expect(secao.getByText('Pilha AA')).toBeVisible()
+})
+
+test('variante e edição do item pela própria lista', async ({ page }) => {
+  await api('POST', '/api/lista', { nome: 'Leite', categoriaId: CATEGORIA.outros })
+  await page.goto('/')
+  await page.getByText('Leite', { exact: true }).click()
+  const variante = page.getByLabel('Variante')
+  await variante.fill('integral 1 L')
+  await variante.blur()
+  await expect(page.getByText('· integral 1 L')).toBeVisible()
+
+  await page.getByText('Editar item (nome e categoria)').click()
+  await page.getByLabel('Nome').fill('Leite de vaca')
+  await page.locator('.editar-item').getByRole('radio', { name: 'Frios e laticínios' }).click()
+  await page.getByRole('button', { name: 'Salvar item' }).click()
+  const secao = page.locator('section', { has: page.getByRole('heading', { name: 'Frios e laticínios' }) })
+  await expect(secao.getByText('Leite de vaca')).toBeVisible()
 })
 
 test('adiciona um item que já existe pela sugestão', async ({ page }) => {

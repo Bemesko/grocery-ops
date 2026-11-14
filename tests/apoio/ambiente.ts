@@ -63,6 +63,7 @@ export const TABELAS = [
   'compra',
   'lista_item',
   'item_codigo',
+  'item_alias',
   'item',
   'mercado',
   'saldo_ajuste',

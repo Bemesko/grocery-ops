@@ -67,7 +67,7 @@
         <p v-if="embalagemInvalida" class="erro-campo">Não entendi: use um número e g, kg, ml, L ou un.</p>
       </div>
 
-      <details :open="Boolean(inicial?.variante || inicial?.precoCheio)">
+      <details :open="Boolean(inicial?.variante || inicial?.precoCheio || varianteSugerida)">
         <summary class="suave">Marca e promoção</summary>
         <label for="variante">Marca / variante</label>
         <input id="variante" v-model="variante" :placeholder="referencia?.variante ?? 'ex.: integral 1L'" />
@@ -117,6 +117,8 @@ const props = defineProps<{
   precisaCategoria?: boolean
   /** Embalagem habitual do item: sugestão quando não há compra anterior com embalagem. */
   embalagemHabitual?: Embalagem | null
+  /** Variante anotada na lista: vem preenchida. */
+  varianteSugerida?: string | null
 }>()
 const emit = defineEmits<{ salvar: [dados: DadosLinha]; remover: []; fechar: [] }>()
 
@@ -127,7 +129,7 @@ const unidades = ref(un.value === 'un' ? Math.max(1, Math.round(qtdInicial ?? 1)
 const pesoTexto = ref(un.value === 'kg' && qtdInicial ? String(qtdInicial).replace('.', ',') : '')
 const precoTexto = ref(dinheiroParaCampo(props.inicial?.precoUnitario))
 const precoCheioTexto = ref(dinheiroParaCampo(props.inicial?.precoCheio))
-const variante = ref(props.inicial?.variante ?? '')
+const variante = ref(props.inicial?.variante ?? props.varianteSugerida ?? '')
 // Modo "ocultar valores": o placeholder não mostra o preço anterior.
 const { ocultos } = useOcultarValores()
 
@@ -145,7 +147,15 @@ const embalagemOrigem = props.inicial
 const embalagemTexto = ref(formatarEmbalagem(embalagemSugerida))
 const embalagem = computed(() => (un.value === 'un' ? lerEmbalagem(embalagemTexto.value) : null))
 const embalagemInvalida = computed(() => un.value === 'un' && Boolean(embalagemTexto.value.trim()) && !embalagem.value)
-const categoriaId = ref<number | null>(null)
+// Item novo: "Outros" já vem marcado (#56), também quando o servidor pede a categoria depois.
+const { outros } = useCategorias()
+const categoriaId = ref<number | null>(props.precisaCategoria ? outros.value : null)
+watch(
+  () => props.precisaCategoria,
+  (precisa) => {
+    if (precisa && categoriaId.value === null) categoriaId.value = outros.value
+  },
+)
 const campoPreco = ref<HTMLInputElement>()
 
 const quantidadeAtual = computed(() => (un.value === 'kg' ? parseNumero(pesoTexto.value) : unidades.value))

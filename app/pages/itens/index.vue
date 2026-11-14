@@ -1,6 +1,6 @@
 <!--
   Gestão do cadastro de itens: ver todos por categoria, mudar categoria em lote, juntar
-  duplicados (vários de uma vez) e apagar itens que nunca foram usados.
+  duplicados (vários de uma vez) e apagar itens que não estão em nenhuma compra.
 -->
 <template>
   <main class="pagina">
@@ -80,7 +80,7 @@
           </component>
           <span v-if="menorPreco(i) !== null" class="suave num">{{ formatarDinheiro(menorPreco(i)) }}</span>
           <button
-            v-if="!i.usos && !selecionando"
+            v-if="!i.compras && !selecionando"
             type="button"
             class="icone"
             :aria-label="`Apagar ${i.nome}`"
@@ -232,7 +232,7 @@ async function juntarSelecionados(destino: ItemResumo) {
 }
 
 async function apagar(i: ItemResumo) {
-  if (!confirm(`Apagar “${i.nome}”? Ele nunca foi usado.`)) return
+  if (!confirm(`Apagar “${i.nome}”? Ele sai também da lista. Não dá para desfazer.`)) return
   const ok = await tentar(() => $fetch(`/api/itens/${i.id}`, { method: 'DELETE' }))
   if (!ok) return
   avisar(`${i.nome} apagado`)

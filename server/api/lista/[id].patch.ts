@@ -5,14 +5,17 @@ export default defineEventHandler(async (event) => {
   const nestaIda = booleano(corpo?.nestaIda, 'nestaIda')
   const mudaQuantidade = corpo && 'quantidade' in corpo
   const quantidade = texto(corpo?.quantidade, 'quantidade', { max: 40 })
+  const mudaVariante = corpo && 'variante' in corpo
+  const variante = texto(corpo?.variante, 'variante', { max: 80 })
   const sql = await useDb()
   const [atualizado] = await sql`
     update lista_item set
       prioritario = coalesce(${prioritario}, prioritario),
       nesta_ida = coalesce(${nestaIda}, nesta_ida),
-      quantidade = ${mudaQuantidade ? sql`${quantidade}` : sql`quantidade`}
+      quantidade = ${mudaQuantidade ? sql`${quantidade}` : sql`quantidade`},
+      variante = ${mudaVariante ? sql`${variante}` : sql`variante`}
     where id = ${id} and status = 'aberto'
-    returning id, prioritario, nesta_ida, quantidade
+    returning id, prioritario, nesta_ida, quantidade, variante
   `
   if (!atualizado) erro(404, 'Item não está na lista')
   return atualizado

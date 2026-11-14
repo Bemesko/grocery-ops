@@ -39,15 +39,18 @@ function pontuar(nome: string, consulta: string): number {
   return sim >= 0.6 && consulta.length >= 3 ? 50 * sim : 0
 }
 
-export function buscarItens<T extends { nome: string; usos?: number }>(
+export function buscarItens<T extends { nome: string; usos?: number; aliases?: string[] }>(
   itens: T[],
   consulta: string,
   limite = 6,
 ): T[] {
   const q = normalizarNome(consulta)
   if (!q) return []
+  // Outros nomes (aliases) contam um pouco menos que o nome do item.
+  const pontosDe = (item: T) =>
+    Math.max(pontuar(normalizarNome(item.nome), q), ...(item.aliases ?? []).map((a) => pontuar(normalizarNome(a), q) * 0.95))
   return itens
-    .map((item) => ({ item, pontos: pontuar(normalizarNome(item.nome), q) }))
+    .map((item) => ({ item, pontos: pontosDe(item) }))
     .filter((r) => r.pontos > 0)
     .sort((a, b) => b.pontos - a.pontos || (b.item.usos ?? 0) - (a.item.usos ?? 0))
     .slice(0, limite)

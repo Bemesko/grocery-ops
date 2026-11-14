@@ -11,7 +11,10 @@ async function compraFinalizada(nome: string, preco: number, categoriaId: number
 
 test('informar o saldo mostra o orçamento da semana', async ({ page }) => {
   await page.goto('/ajustes')
-  await page.getByPlaceholder('Saldo de hoje (R$)').fill('1000,00')
+  await page.waitForLoadState('networkidle')
+  const campo = page.getByPlaceholder('Saldo de hoje (R$)')
+  await campo.fill('1000,00')
+  await expect(campo).toHaveValue('1000,00')
   await page.getByRole('button', { name: 'Ajustar' }).click()
   const saldo = page.locator('#saldo')
   await expect(saldo).toContainText('Saldo agora')
