@@ -7,6 +7,8 @@ SHELL := /usr/bin/env bash
 export PATH := $(HOME)/.local/bin:$(PATH)
 
 NODE_IMAGE := node:26.13.0-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
+# Navegadores do Playwright: a imagem oficial na mesma versão do @playwright/test do package.json.
+PLAYWRIGHT_IMAGE := mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
 NODE_RUN := docker run --rm -v $(CURDIR):/app -w /app -e npm_config_cache=/tmp/.npm -e npm_config_update_notifier=false
 
 # Postgres local (mesma major do CNPG em deploy/base/database.yaml), dados em .data/postgres.
@@ -15,7 +17,7 @@ DB_CONTAINER := grocery-ops-db
 DB_URL := postgres://app:app@host.docker.internal:5432/app
 DB_ENV := --add-host=host.docker.internal:host-gateway -e DATABASE_URL=$(DB_URL)
 
-.PHONY: help deps lint validate unit test install dev build run db db-stop
+.PHONY: help deps lint validate unit test install dev build run db db-stop build-app integracao e2e-app
 
 help: ## Lista os targets
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -34,6 +36,21 @@ unit: ## Testes das regras com node --test (instala as dependências se faltarem
 	$(NODE_RUN) $(NODE_IMAGE) node --test 'tests/*.test.ts'
 
 test: lint unit ## Tudo que roda sem cluster (o lint já inclui o validate)
+
+# Testes de integração (API + Postgres + HA e SEFAZ falsos) e Playwright: sobem o build de
+# produção (.output) com um banco novo por arquivo de teste. Precisam de `make install`, de
+# `make build-app` e de um Postgres em TESTE_DATABASE_URL (localmente, o do `make db`).
+TESTE_DATABASE_URL ?= postgres://app:app@127.0.0.1:5432/app
+TESTE_RUN := $(NODE_RUN) --network host -e TESTE_DATABASE_URL=$(TESTE_DATABASE_URL)
+
+build-app: ## nuxt build no container (o .output dos testes de integração e do Playwright)
+	$(NODE_RUN) $(NODE_IMAGE) npx nuxt build
+
+integracao: ## Testes de integração e de contrato (API, HA e SEFAZ falsos)
+	$(TESTE_RUN) $(NODE_IMAGE) node --test --test-concurrency=2 'tests/integracao/*.test.ts'
+
+e2e-app: ## Playwright no celular (375 px): lista, mercado, nota fiscal, gastos e ajustes
+	$(TESTE_RUN) -e HOME=/tmp $(PLAYWRIGHT_IMAGE) npx playwright test -c tests/e2e-app
 
 install: ## npm ci no container Node fixado
 	$(NODE_RUN) $(NODE_IMAGE) npm ci

@@ -40,6 +40,25 @@ make test                         # pre-commit + kubeconform/kube-linter de depl
 
 O service worker só é gerado no build de produção. Para testar a instalação do PWA, use `make run` ou o próprio cluster, que serve via HTTPS da tailnet.
 
+## Testes
+
+| Camada | Comando (WSL) | Onde roda | O que cobre |
+| --- | --- | --- | --- |
+| Unitários | `make unit` (dentro do `make test`) | todo PR (`lint`) | regras puras: orçamento, embalagem, NFC-e, casamento, Alexa |
+| Integração e contrato | `make integracao` | só na `main` (job `app`) | API real + Postgres; contrato das respostas com o front ([shared/contratos/api.ts](shared/contratos/api.ts), `zod`) e com o Home Assistant e a SEFAZ falsos |
+| Playwright | `make e2e-app` | só na `main` (job `app`) | celular (375 px): lista, mercado, nota fiscal, gastos e ajustes |
+| Cluster | `e2e` do CI | todo PR | k3s com o overlay `ci`, `/healthz`, banco e telemetria |
+
+Integração e Playwright sobem o build de produção (`.output`) com um banco novo e o HA e a SEFAZ falsos ([tests/apoio](tests/apoio)). Eles precisam do Postgres do `make db`:
+
+```bash
+make db install build-app
+make integracao
+make e2e-app                      # na imagem oficial do Playwright (por digest); relatório em tests/e2e-app/relatorio
+```
+
+Como no CI eles só rodam na `main`, rode os dois antes de abrir um PR.
+
 ## Deploy
 
 Este repo foi gerado do template [bernats-homelab/repotpl-k8s-app](https://github.com/bernats-homelab/repotpl-k8s-app). O cluster é gerenciado pelo [bernats-homelab/2026-kubernetes](https://github.com/bernats-homelab/2026-kubernetes), que fixa a versão em `kubernetes/apps/values.yaml`:

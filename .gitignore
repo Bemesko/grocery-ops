@@ -23,3 +23,7 @@ node_modules/
 # graphify: caminhos locais da máquina (interpretador e raiz absoluta)
 graphify-out/.graphify_python
 graphify-out/.graphify_root
+
+# Playwright (make e2e-app)
+tests/e2e-app/relatorio/
+tests/e2e-app/resultados/

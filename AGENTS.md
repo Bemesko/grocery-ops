@@ -33,5 +33,7 @@ PWA de lista de compras e acompanhamento do carrinho (`grocery-ops`), publicado 
 # Testes
 
 - `make test` (WSL): pre-commit completo, incluindo kubeconform + kube-linter de `deploy/` (componentes entram pelos overlays)
+- `make integracao` e `make e2e-app` (WSL, depois de `make db install build-app`): integração + contrato (API real, Postgres, HA e SEFAZ falsos em `tests/apoio`, schemas `zod` em `shared/contratos`) e Playwright no celular. No CI só rodam na `main` (job `app`): rode os dois antes de abrir PR. Mudou o formato de uma resposta da API? Atualize `shared/contratos/api.ts`
+- Fixtures de NFC-e são sempre fictícias (`tests/fixtures`): nunca uma nota real
 - `make run`: imagem de produção com raiz read-only, como no cluster, com o Postgres do `make db`
 - CI `e2e`: k3s no runner, imagem do próprio job, `deploy/overlays/ci` Available + `/healthz` + API com o banco + traces e métricas chegando ao coletor
