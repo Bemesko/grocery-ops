@@ -18,7 +18,8 @@ export async function referencias(sql: Sql, antesDe?: Date): Promise<Map<string,
       ci.item_id, c.mercado_id, ci.preco_unitario_centavos as preco, ci.quantidade, ci.variante,
       ci.embalagem_qtd, ci.embalagem_unidade, c.data, c.finalizada_em
     from compra_item ci join compra c on c.id = ci.compra_id
-    where c.status = 'finalizada' ${antesDe ? sql`and c.finalizada_em < ${antesDe}` : sql``}
+    where c.status = 'finalizada' and not ci.preco_pendente
+      ${antesDe ? sql`and c.finalizada_em < ${antesDe}` : sql``}
     order by ci.item_id, c.mercado_id, c.finalizada_em desc, ci.id desc
   `
   const mapa = new Map<string, Referencia>()
@@ -107,7 +108,8 @@ export async function itensDaCompra(
   const linhas = await sql`
     select ci.id, ci.item_id, i.nome, i.categoria_id, ci.unidade, ci.quantidade,
       ci.preco_unitario_centavos as preco_unitario, ci.preco_cheio_centavos as preco_cheio,
-      ci.variante, ci.embalagem_qtd, ci.embalagem_unidade, ci.da_lista, ci.total_centavos as total
+      ci.variante, ci.embalagem_qtd, ci.embalagem_unidade, ci.da_lista, ci.total_centavos as total,
+      ci.preco_pendente, ci.unidades
     from compra_item ci join item i on i.id = ci.item_id
     where ci.compra_id = ${compra.id}
     order by ci.id

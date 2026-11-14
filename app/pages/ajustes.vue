@@ -39,7 +39,7 @@
           recarga do dia 1.
         </p>
         <form class="linha ajuste" @submit.prevent="ajustarSaldo">
-          <input v-model="saldoTexto" class="cresce" inputmode="decimal" placeholder="Saldo de hoje (R$)" />
+          <CampoValor v-model="saldoTexto" class="cresce" placeholder="Saldo de hoje (R$)" />
           <button type="submit" class="primario" :disabled="parseDinheiro(saldoTexto) === null">Ajustar</button>
         </form>
         <p class="suave dica">

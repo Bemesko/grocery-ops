@@ -34,9 +34,19 @@
             {{ projecao.restante >= 0 ? 'resta' : 'passou' }} {{ formatarDinheiro(Math.abs(projecao.restante)) }}
           </span>
         </div>
-        <div v-if="projecao" class="barra" :title="`Budget do período: ${formatarDinheiro(projecao.budget)}`">
-          <span :style="{ width: `${Math.min(100, (projecao.usado / Math.max(1, projecao.budget)) * 100)}%` }" :class="corRestante" />
+        <!-- #46: o que já está no carrinho (da lista e fora dela) e a estimativa do que falta. -->
+        <div
+          v-if="projecao"
+          class="barra barra-compra"
+          :class="{ estourou: projecao.restante < 0 }"
+          :title="`Budget do período: ${formatarDinheiro(projecao.budget)}`"
+        >
+          <span v-for="s in segmentos" :key="s.tipo" :class="['seg', s.tipo]" :style="{ width: `${s.largura}%` }" />
         </div>
+        <p v-if="projecao" class="legenda-barra suave">
+          <span class="cor lista" /> da lista <span class="cor fora" /> fora da lista
+          <template v-if="faltam.total"><span class="cor falta" /> falta ≈ {{ formatarDinheiro(faltam.total) }}</template>
+        </p>
         <p v-if="projecao?.faltaSaldo" class="aviso perigo">
           O carrinho passa do saldo do VR ({{ formatarDinheiro(dados.budget.saldo) }}).
         </p>
@@ -82,9 +92,10 @@
             <span class="cresce">
               {{ c.nome }}
               <span class="suave">
-                · {{ formatarQuantidade(c.quantidade, c.unidade) }}<template v-if="c.embalagem"> de {{ formatarEmbalagem(c.embalagem) }}</template>
+                · <template v-if="c.unidades">{{ c.unidades }} un · </template>{{ formatarQuantidade(c.quantidade, c.unidade) }}<template v-if="c.embalagem"> de {{ formatarEmbalagem(c.embalagem) }}</template>
                 <template v-if="c.variante"> · {{ c.variante }}</template>
               </span>
+              <span v-if="c.precoPendente" class="selo alerta-selo">sem preço</span>
               <span v-if="c.daLista === false" class="selo neutro">fora da lista</span>
               <SeloVariacao :variacao="c.variacao" class="selos-linha" />
             </span>
@@ -152,9 +163,13 @@
         <p>
           Total no app: <strong class="num">{{ formatarDinheiro(totalCarrinho) }}</strong>
         </p>
+        <p v-if="semPreco" class="aviso alerta">
+          {{ semPreco }} {{ semPreco === 1 ? 'item está' : 'itens estão' }} sem preço: {{ semPreco === 1 ? 'entra' : 'entram' }}
+          pela estimativa. Dá para informar depois, na compra, ou pela nota fiscal.
+        </p>
         <label for="nota">Total da nota (opcional, para conferir)</label>
         <div class="linha">
-          <input id="nota" v-model="totalNotaTexto" class="cresce" inputmode="decimal" placeholder="0,00" />
+          <CampoValor id="nota" v-model="totalNotaTexto" class="cresce" placeholder="0,00" />
           <button type="button" :disabled="lendoNota" @click="leitorNota = true">Ler nota</button>
         </div>
         <VerificarNota
@@ -243,6 +258,7 @@ useAtualizacaoPeriodica(() => {
 
 const compra = computed(() => dados.value?.compra ?? null)
 const totalCarrinho = computed(() => dados.value?.itens.reduce((s, i) => s + i.total, 0) ?? 0)
+const semPreco = computed(() => dados.value?.itens.filter((i) => i.precoPendente).length ?? 0)
 const nestaIda = computed(() => dados.value?.pendentes.filter((p) => p.nestaIda) ?? [])
 const outrosDaLista = computed(() => dados.value?.pendentes.filter((p) => !p.nestaIda) ?? [])
 const faltam = computed(() => {
@@ -258,6 +274,23 @@ const previsao = computed(() =>
     ? projetarBudget(dados.value.budget, totalCarrinho.value + faltam.value.total)
     : null,
 )
+/** Larguras (% do budget da semana) dos três trechos da barra, cortadas em 100% no total. */
+const segmentos = computed(() => {
+  const budget = Math.max(1, projecao.value?.budget ?? 1)
+  const itens = dados.value?.itens ?? []
+  const valores = [
+    { tipo: 'lista', valor: itens.filter((i) => i.daLista !== false).reduce((s, i) => s + i.total, 0) },
+    { tipo: 'fora', valor: itens.filter((i) => i.daLista === false).reduce((s, i) => s + i.total, 0) },
+    { tipo: 'falta', valor: faltam.value.total },
+  ]
+  let usado = 0
+  return valores.map(({ tipo, valor }) => {
+    const largura = Math.max(0, Math.min(100 - usado, (valor / budget) * 100))
+    usado += largura
+    return { tipo, largura }
+  })
+})
+
 const corRestante = computed(() => {
   if (!projecao.value) return ''
   if (projecao.value.restante < 0) return 'ruim'
@@ -361,6 +394,8 @@ async function salvarLinha(d: DadosLinha) {
     unidade: d.unidade,
     quantidade: d.quantidade,
     precoUnitario: d.precoUnitario,
+    precoPendente: d.precoPendente,
+    unidades: d.unidades,
     precoCheio: d.precoCheio,
     variante: d.variante,
     embalagem: d.embalagem,
@@ -467,6 +502,61 @@ async function comecar(mercadoId: number) {
 
 .total {
   font-size: 1.4rem;
+}
+
+.barra-compra {
+  display: flex;
+  height: 0.6rem;
+}
+
+.barra-compra > .seg {
+  border-radius: 0;
+  flex: none;
+}
+
+.barra-compra.estourou {
+  outline: 2px solid var(--perigo);
+  outline-offset: 1px;
+}
+
+.seg.lista,
+.cor.lista {
+  background: var(--primaria);
+}
+
+.seg.fora,
+.cor.fora {
+  background: var(--alerta);
+}
+
+.seg.falta,
+.cor.falta {
+  background: repeating-linear-gradient(135deg, var(--primaria) 0 3px, transparent 3px 6px);
+  opacity: 0.6;
+}
+
+.legenda-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.legenda-barra .cor {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  margin-left: 0.3rem;
+}
+
+.alerta-selo {
+  margin-left: 0.3rem;
+  background: transparent;
+  color: var(--alerta);
+  border: 1px solid var(--alerta);
 }
 
 .barra > span.atencao {

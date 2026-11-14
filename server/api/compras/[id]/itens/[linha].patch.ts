@@ -4,9 +4,9 @@ export default defineEventHandler(async (event) => {
   const corpo = (await readBody(event)) ?? {}
   const linha = lerLinhaCarrinho(corpo)
   const sql = await useDb()
-  await compraEditavel(sql, compraId)
+  const compra = await compraEditavel(sql, compraId)
   const [atual] = await sql`
-    select unidade, quantidade, preco_unitario_centavos from compra_item
+    select item_id, unidade, quantidade, preco_unitario_centavos, preco_pendente from compra_item
     where id = ${linhaId} and compra_id = ${compraId}
   `
   if (!atual) erro(404, 'Item não está nesta compra')
@@ -14,7 +14,15 @@ export default defineEventHandler(async (event) => {
   const quantidade = linha.quantidade ?? (atual.quantidade as number)
   const mudaEmbalagem = 'embalagem' in corpo || un === 'kg'
   const embalagem = un === 'un' ? linha.embalagem : null
-  const preco = linha.preco ?? (atual.precoUnitarioCentavos as number)
+  // Informar um preço tira a marca de "sem preço"; marcar de novo volta para a estimativa.
+  const pendente = 'precoPendente' in corpo ? linha.precoPendente : linha.preco !== null ? false : (atual.precoPendente as boolean)
+  const preco =
+    linha.preco !== null && !pendente
+      ? linha.preco
+      : pendente && !(atual.precoPendente as boolean)
+        ? await precoEstimado(sql, atual.itemId as number, compra.mercadoId)
+        : (atual.precoUnitarioCentavos as number)
+  const unidades = un === 'kg' ? ('unidades' in corpo ? linha.unidades : sql`unidades`) : null
   await sql`
     update compra_item set
       unidade = ${un},
@@ -24,7 +32,9 @@ export default defineEventHandler(async (event) => {
       variante = ${'variante' in corpo ? linha.variante : sql`variante`},
       embalagem_qtd = ${mudaEmbalagem ? (embalagem?.qtd ?? null) : sql`embalagem_qtd`},
       embalagem_unidade = ${mudaEmbalagem ? (embalagem?.unidade ?? null) : sql`embalagem_unidade`},
-      total_centavos = ${totalItem(quantidade, preco)}
+      total_centavos = ${totalItem(quantidade, preco)},
+      preco_pendente = ${pendente},
+      unidades = ${unidades}
     where id = ${linhaId}
   `
   return { ok: true }

@@ -1,13 +1,14 @@
 <!--
-  Folha para registrar (ou corrigir) um item no carrinho. Com o preço da última vez naquele
-  mercado, um toque em "Mesmo preço" registra sem digitar.
+  Folha para registrar (ou corrigir) um item no carrinho. Um botão só (#57): com o preço
+  vazio, "Registrar" usa o preço da última vez naquele mercado. "Informar o preço depois"
+  (#52) registra com a estimativa e marca a linha. Tocar fora pergunta antes de descartar (#47).
 -->
 <template>
-  <div class="fundo" @click.self="emit('fechar')">
+  <div class="fundo" @click.self="pedirFechar(true)">
     <form class="folha" @submit.prevent="salvar()">
       <div class="cabecalho">
         <h2>{{ titulo }}</h2>
-        <button type="button" class="icone" aria-label="Fechar" @click="emit('fechar')">✕</button>
+        <button type="button" class="icone" aria-label="Fechar" @click="pedirFechar(false)">✕</button>
       </div>
 
       <p v-if="referencia" class="suave">
@@ -30,18 +31,17 @@
       <div class="campos">
         <div>
           <label for="preco">{{ un === 'kg' ? 'Preço por kg' : 'Preço da unidade' }}</label>
-          <input
+          <CampoValor
             id="preco"
             ref="campoPreco"
             v-model="precoTexto"
-            inputmode="decimal"
-            :placeholder="referencia && unidadeRef === un && !ocultos ? dinheiroParaCampo(referencia.preco) : '0,00'"
-            autocomplete="off"
+            :disabled="depois"
+            :placeholder="usaReferencia && !ocultos ? dinheiroParaCampo(referencia!.preco) : '0,00'"
           />
         </div>
         <div v-if="un === 'kg'">
           <label for="peso">Peso (kg)</label>
-          <input id="peso" v-model="pesoTexto" inputmode="decimal" placeholder="0,000" autocomplete="off" />
+          <CampoValor id="peso" v-model="pesoTexto" :casas="3" placeholder="0,000" />
         </div>
         <div v-else>
           <label>Quantidade</label>
@@ -50,6 +50,24 @@
             <input v-model.number="unidades" class="qtd num" inputmode="numeric" aria-label="Quantidade" />
             <button type="button" aria-label="Mais" @click="unidades++">+</button>
           </div>
+        </div>
+      </div>
+
+      <p v-if="usaReferencia && !depois && preco === null" class="suave dica-preco">
+        Vazio = {{ formatarDinheiro(referencia!.preco) }}, como da última vez aqui.
+      </p>
+      <label class="marcar depois">
+        <input v-model="depois" type="checkbox" />
+        Informar o preço depois
+        <span class="suave">(entra pela estimativa, marcado “sem preço”)</span>
+      </label>
+
+      <div v-if="un === 'kg'" class="embalagem">
+        <label for="unidades-kg">Unidades <span class="suave">(opcional, ex.: 2 mangas)</span></label>
+        <div class="linha">
+          <button type="button" aria-label="Menos unidades" @click="unidadesKg = Math.max(0, (unidadesKg ?? 0) - 1) || null">−</button>
+          <input id="unidades-kg" v-model.number="unidadesKg" class="qtd num" inputmode="numeric" placeholder="—" />
+          <button type="button" aria-label="Mais unidades" @click="unidadesKg = (unidadesKg ?? 0) + 1">+</button>
         </div>
       </div>
 
@@ -72,27 +90,19 @@
         <label for="variante">Marca / variante</label>
         <input id="variante" v-model="variante" :placeholder="referencia?.variante ?? 'ex.: integral 1L'" />
         <label for="cheio">Preço sem promoção</label>
-        <input id="cheio" v-model="precoCheioTexto" inputmode="decimal" placeholder="opcional" />
+        <CampoValor id="cheio" v-model="precoCheioTexto" placeholder="opcional" />
       </details>
 
       <p class="total">
         Total <strong class="num">{{ total === null ? '—' : formatarDinheiro(total) }}</strong>
+        <span v-if="depois" class="selo neutro">sem preço</span>
         <span v-if="porConteudo" class="suave num">{{ porConteudo }}</span>
         <span v-if="variacaoTexto" class="selo" :class="variacaoClasse">{{ variacaoTexto }}</span>
         <SeloReduflacao :reduflacao="reduflacao" />
       </p>
 
       <div class="acoes">
-        <button
-          v-if="referencia && !inicial && (unidadeRef === un)"
-          type="button"
-          class="primario"
-          :disabled="!podeSalvarMesmoPreco"
-          @click="salvar(referencia.preco)"
-        >
-          ✓ Mesmo preço
-        </button>
-        <button type="submit" :class="{ primario: !referencia || inicial || unidadeRef !== un }" :disabled="!valido">
+        <button type="submit" class="primario" :disabled="!valido">
           {{ inicial ? 'Salvar' : 'Registrar' }}
         </button>
         <button v-if="inicial" type="button" class="perigo" @click="emit('remover')">Remover</button>
@@ -126,8 +136,10 @@ const un = ref<Unidade>(props.inicial?.unidade ?? props.unidade)
 const unidadeRef = props.unidade
 const qtdInicial = props.inicial?.quantidade ?? props.quantidade ?? (un.value === 'kg' ? null : 1)
 const unidades = ref(un.value === 'un' ? Math.max(1, Math.round(qtdInicial ?? 1)) : 1)
-const pesoTexto = ref(un.value === 'kg' && qtdInicial ? String(qtdInicial).replace('.', ',') : '')
-const precoTexto = ref(dinheiroParaCampo(props.inicial?.precoUnitario))
+const pesoTexto = ref(un.value === 'kg' && qtdInicial ? qtdInicial.toFixed(3).replace('.', ',') : '')
+const precoTexto = ref(props.inicial?.precoPendente ? '' : dinheiroParaCampo(props.inicial?.precoUnitario))
+const depois = ref(props.inicial?.precoPendente ?? false)
+const unidadesKg = ref<number | null>(props.inicial?.unidades ?? null)
 const precoCheioTexto = ref(dinheiroParaCampo(props.inicial?.precoCheio))
 const variante = ref(props.inicial?.variante ?? props.varianteSugerida ?? '')
 // Modo "ocultar valores": o placeholder não mostra o preço anterior.
@@ -156,33 +168,38 @@ watch(
     if (precisa && categoriaId.value === null) categoriaId.value = outros.value
   },
 )
-const campoPreco = ref<HTMLInputElement>()
+const campoPreco = ref<{ focus: () => void }>()
 
 const quantidadeAtual = computed(() => (un.value === 'kg' ? parseNumero(pesoTexto.value) : unidades.value))
 const preco = computed(() => parseDinheiro(precoTexto.value))
+/** Ao registrar (não ao corrigir), o preço vazio vale o da última vez neste mercado (#57). */
+const usaReferencia = computed(() => !props.inicial && Boolean(props.referencia) && unidadeRef === un.value)
+const precoEfetivo = computed(() =>
+  depois.value ? null : (preco.value ?? (usaReferencia.value ? props.referencia!.preco : null)),
+)
+/** Para o total: sem preço, mostra a estimativa (a última referência), como o servidor fará. */
+const precoDoTotal = computed(() => precoEfetivo.value ?? (depois.value ? (props.referencia?.preco ?? null) : null))
 const total = computed(() =>
-  quantidadeAtual.value && preco.value !== null ? totalItem(quantidadeAtual.value, preco.value) : null,
+  quantidadeAtual.value && precoDoTotal.value !== null ? totalItem(quantidadeAtual.value, precoDoTotal.value) : null,
 )
 const categoriaOk = computed(() => !props.precisaCategoria || categoriaId.value !== null)
 const valido = computed(
   () =>
     Boolean(quantidadeAtual.value && quantidadeAtual.value > 0) &&
-    preco.value !== null &&
+    (depois.value || precoEfetivo.value !== null) &&
     categoriaOk.value &&
     !embalagemInvalida.value,
-)
-const podeSalvarMesmoPreco = computed(
-  () => Boolean(quantidadeAtual.value && quantidadeAtual.value > 0) && categoriaOk.value && !embalagemInvalida.value,
 )
 
 /** "R$ 22,50/kg" quando a embalagem é conhecida (exceto unidades de 1 un). */
 const porConteudo = computed(() => {
   const e = embalagem.value
-  if (!e || preco.value === null || (e.unidade === 'un' && e.qtd === 1)) return ''
-  return `${formatarDinheiro(precoBase(preco.value, e))}${rotuloBase(baseDe(e.unidade))}`
+  const p = precoEfetivo.value
+  if (!e || p === null || (e.unidade === 'un' && e.qtd === 1)) return ''
+  return `${formatarDinheiro(precoBase(p, e))}${rotuloBase(baseDe(e.unidade))}`
 })
 const reduflacao = computed(() =>
-  props.referencia && preco.value !== null && unidadeRef === un.value
+  props.referencia && preco.value !== null && !depois.value && unidadeRef === un.value
     ? detectarReduflacao(props.referencia, { preco: preco.value, embalagem: embalagem.value })
     : null,
 )
@@ -190,7 +207,7 @@ const reduflacao = computed(() =>
 // Embalagens de tamanhos diferentes: compara o preço por kg/L/un.
 const comparacao = computed(() => {
   const ref = props.referencia
-  if (!ref || preco.value === null || !ref.preco || unidadeRef !== un.value) return null
+  if (!ref || preco.value === null || depois.value || !ref.preco || unidadeRef !== un.value) return null
   const e = embalagem.value
   if (e && ref.embalagem && mesmaBase(e, ref.embalagem) && !mesmoConteudo(e, ref.embalagem)) {
     const antes = precoBase(ref.preco, ref.embalagem)
@@ -215,13 +232,14 @@ function dataCurta(dia: string) {
   return `${d}/${m}`
 }
 
-function salvar(precoForcado?: number) {
-  const precoFinal = precoForcado ?? preco.value
-  if (precoFinal === null || !quantidadeAtual.value || !categoriaOk.value) return
+function salvar() {
+  if (!valido.value || !quantidadeAtual.value) return
   emit('salvar', {
     unidade: un.value,
     quantidade: Math.round(quantidadeAtual.value * 1000) / 1000,
-    precoUnitario: precoFinal,
+    precoUnitario: precoEfetivo.value,
+    precoPendente: depois.value,
+    unidades: un.value === 'kg' ? unidadesKg.value || null : null,
     precoCheio: parseDinheiro(precoCheioTexto.value),
     variante: variante.value.trim() || null,
     embalagem: embalagem.value,
@@ -229,7 +247,22 @@ function salvar(precoForcado?: number) {
   })
 }
 
+// #47: tocar fora de uma folha de registro (comum sem querer, no mercado) pergunta antes de
+// descartar; o ✕ e o toque fora ao corrigir só perguntam se algo mudou.
+const foto = () =>
+  JSON.stringify([un.value, unidades.value, pesoTexto.value, precoTexto.value, depois.value, unidadesKg.value,
+    embalagemTexto.value, variante.value, precoCheioTexto.value, categoriaId.value])
+let inicialFoto = ''
+const sujo = () => foto() !== inicialFoto
+
+function pedirFechar(fora: boolean) {
+  const perguntar = fora && !props.inicial ? true : sujo()
+  if (perguntar && !confirm(props.inicial ? 'Descartar as mudanças?' : 'Descartar este item?')) return
+  emit('fechar')
+}
+
 onMounted(() => {
+  inicialFoto = foto()
   if (!props.referencia && !props.precisaCategoria) campoPreco.value?.focus()
 })
 </script>
@@ -291,6 +324,23 @@ summary {
   color: var(--perigo);
   font-size: 0.85rem;
   margin: 0.25rem 0 0;
+}
+
+.dica-preco {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}
+
+.depois {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.depois .suave {
+  font-size: 0.85rem;
 }
 
 .total {

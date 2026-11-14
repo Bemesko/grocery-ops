@@ -78,6 +78,8 @@ export const compraItem = z
     embalagem: embalagem.nullable(),
     daLista: z.boolean().nullable(),
     total: centavos,
+    precoPendente: z.boolean(),
+    unidades: z.number().int().positive().nullable(),
     variacao: variacao.nullable(),
   })
   .strict()

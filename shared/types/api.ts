@@ -92,6 +92,10 @@ export interface CompraItem {
   embalagem: Embalagem | null
   daLista: boolean | null
   total: number
+  /** Preço ainda não informado (#52): o total usa a estimativa. */
+  precoPendente: boolean
+  /** Unidades de um item comprado por kg (#51), só informativo. */
+  unidades: number | null
   variacao: Variacao | null
 }
 
@@ -99,7 +103,11 @@ export interface CompraItem {
 export interface DadosLinha {
   unidade: Unidade
   quantidade: number
-  precoUnitario: number
+  /** null com `precoPendente`: o servidor usa a estimativa. */
+  precoUnitario: number | null
+  precoPendente: boolean
+  /** Só para itens por kg. */
+  unidades: number | null
   precoCheio: number | null
   variante: string | null
   /** Só para itens por unidade. */
