@@ -9,8 +9,8 @@ export async function buscarCompra(sql: Sql, id: number): Promise<CompraBanco> {
   const [compra] = await sql`
     select c.id, c.mercado_id, m.nome as mercado, c.status, c.data, c.origem,
       c.total_nota_centavos as total_nota, c.finalizada_em,
-      coalesce((select sum(total_centavos) from compra_item where compra_id = c.id), 0)::int8 as total
-    from compra c join mercado m on m.id = c.mercado_id
+      ct.total, ct.itens as total_itens
+    from compra c join mercado m on m.id = c.mercado_id join compra_total ct on ct.compra_id = c.id
     where c.id = ${id}
   `
   if (!compra) erro(404, 'Compra não encontrada')
@@ -42,6 +42,6 @@ export async function resumoCompra(sql: Sql, id: number): Promise<ResumoCompra> 
     foraDaLista: { quantidade: fora.length, total: fora.reduce((s, i) => s + i.total, 0) },
     altas: comVariacao.filter((i) => pct(i) > 0).sort((a, b) => pct(b) - pct(a)).slice(0, 3),
     baixas: comVariacao.filter((i) => pct(i) < 0).sort((a, b) => pct(a) - pct(b)).slice(0, 3),
-    divergencia: compra.totalNota ? (compra.total - compra.totalNota) / compra.totalNota : null,
+    divergencia: compra.totalNota ? (compra.totalItens - compra.totalNota) / compra.totalNota : null,
   }
 }

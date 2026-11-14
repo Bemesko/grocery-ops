@@ -145,7 +145,7 @@
                   <span class="suave num">{{ formatarPercentual(c.total / g.total) }}</span>
                   <span class="num">{{ formatarDinheiro(c.total) }}</span>
                 </span>
-                <span class="barra"><span :style="{ width: `${(c.total / maiorCategoria) * 100}%` }" /></span>
+                <span class="barra"><span :style="{ width: `${Math.max(0, c.total / maiorCategoria) * 100}%` }" /></span>
               </button>
               <ul v-if="aberta === c.categoriaId" class="itens-categoria">
                 <li v-for="i in c.itens" :key="i.itemId">

@@ -292,47 +292,9 @@ export async function confirmarConferencia(sql: Sql, compraId: number, decisoes:
     const usados = new Set<number>()
     await tx`update nfce_item set compra_item_id = null where compra_id = ${compraId}`
 
-    for (const d of decisoes) {
-      const linha = linhas.get(d.ordem)
-      if (!linha) erro(400, `Linha ${d.ordem} não existe na nota`)
-      if (d.ignorar) continue
-      const un = unidadeDaNota(linha.unidade)
-      const daNota = un === 'un' ? embalagemDaDescricao(linha.descricao) : null
-      let compraItemId: number
-      let itemId: number
-      if (d.compraItemId) {
-        const anotado = doApp.get(d.compraItemId)
-        if (!anotado) erro(400, 'Item anotado não pertence a esta compra')
-        if (usados.has(anotado.id) || remover.includes(anotado.id)) erro(400, `${anotado.nome} está em duas linhas`)
-        const { preco, precoCheio, total } = precoConferido(comDesconto(linha), anotado.precoCheio)
-        const embalagem = un === 'un' ? (anotado.embalagem ?? daNota) : null
-        await tx`
-          update compra_item set unidade = ${un}, quantidade = ${linha.quantidade}, preco_unitario_centavos = ${preco},
-            preco_cheio_centavos = ${precoCheio}, total_centavos = ${total}, preco_pendente = false,
-            embalagem_qtd = ${embalagem?.qtd ?? null}, embalagem_unidade = ${embalagem?.unidade ?? null}
-          where id = ${anotado.id}
-        `
-        compraItemId = anotado.id
-        itemId = anotado.itemId
-      } else {
-        const item = await resolverItem(tx, {
-          itemId: d.itemId ?? null,
-          nome: d.nome ?? null,
-          categoriaId: d.categoriaId ?? null,
-          unidade: un,
-        })
-        const { preco, precoCheio, total } = precoConferido(comDesconto(linha))
-        const [criado] = await tx`
-          insert into compra_item (compra_id, item_id, unidade, quantidade, preco_unitario_centavos, preco_cheio_centavos,
-            da_lista, total_centavos, embalagem_qtd, embalagem_unidade)
-          values (${compraId}, ${item.id}, ${un}, ${linha.quantidade}, ${preco}, ${precoCheio}, false,
-            ${total}, ${daNota?.qtd ?? null}, ${daNota?.unidade ?? null})
-          returning id
-        `
-        compraItemId = criado!.id as number
-        itemId = item.id
-      }
-      usados.add(compraItemId)
+    /** Liga a linha da nota ao item da compra, aprende o código e a embalagem habitual. */
+    const ligar = async (linha: (typeof lidas)[number], compraItemId: number, itemId: number) => {
+      const daNota = unidadeDaNota(linha.unidade) === 'un' ? embalagemDaDescricao(linha.descricao) : null
       if (daNota) {
         await tx`
           update item set embalagem_qtd = ${daNota.qtd}, embalagem_unidade = ${daNota.unidade}
@@ -346,6 +308,57 @@ export async function confirmarConferencia(sql: Sql, compraId: number, decisoes:
           on conflict (mercado_id, codigo) do update set item_id = excluded.item_id
         `
       }
+    }
+
+    // #49: o mesmo item anotado pode ter várias linhas na nota; elas são somadas.
+    const linhasDoAnotado = new Map<number, (typeof lidas)[number][]>()
+    for (const d of decisoes) {
+      const linha = linhas.get(d.ordem)
+      if (!linha) erro(400, `Linha ${d.ordem} não existe na nota`)
+      if (d.ignorar) continue
+      if (d.compraItemId) {
+        const anotado = doApp.get(d.compraItemId)
+        if (!anotado) erro(400, 'Item anotado não pertence a esta compra')
+        if (remover.includes(anotado.id)) erro(400, `${anotado.nome} está numa linha da nota e para sair da compra`)
+        linhasDoAnotado.set(anotado.id, [...(linhasDoAnotado.get(anotado.id) ?? []), linha])
+        continue
+      }
+      const un = unidadeDaNota(linha.unidade)
+      const daNota = un === 'un' ? embalagemDaDescricao(linha.descricao) : null
+      const item = await resolverItem(tx, {
+        itemId: d.itemId ?? null,
+        nome: d.nome ?? null,
+        categoriaId: d.categoriaId ?? null,
+        unidade: un,
+      })
+      const { preco, precoCheio, total } = precoConferido(comDesconto(linha))
+      const [criado] = await tx`
+        insert into compra_item (compra_id, item_id, unidade, quantidade, preco_unitario_centavos, preco_cheio_centavos,
+          da_lista, total_centavos, embalagem_qtd, embalagem_unidade)
+        values (${compraId}, ${item.id}, ${un}, ${linha.quantidade}, ${preco}, ${precoCheio}, false,
+          ${total}, ${daNota?.qtd ?? null}, ${daNota?.unidade ?? null})
+        returning id
+      `
+      usados.add(criado!.id as number)
+      await ligar(linha, criado!.id as number, item.id)
+    }
+
+    for (const [anotadoId, doItem] of linhasDoAnotado) {
+      const anotado = doApp.get(anotadoId)!
+      const unidades = new Set(doItem.map((l) => unidadeDaNota(l.unidade)))
+      if (unidades.size > 1) erro(400, `As linhas de ${anotado.nome} misturam kg e unidade: confira os pares`)
+      const un = [...unidades][0]!
+      const { quantidade, preco, precoCheio, total } = consolidarLinhas(doItem.map(comDesconto), anotado.precoCheio)
+      const daNota = un === 'un' ? embalagemDaDescricao(doItem[0]!.descricao) : null
+      const embalagem = un === 'un' ? (anotado.embalagem ?? daNota) : null
+      await tx`
+        update compra_item set unidade = ${un}, quantidade = ${quantidade}, preco_unitario_centavos = ${preco},
+          preco_cheio_centavos = ${precoCheio}, total_centavos = ${total}, preco_pendente = false,
+          embalagem_qtd = ${embalagem?.qtd ?? null}, embalagem_unidade = ${embalagem?.unidade ?? null}
+        where id = ${anotado.id}
+      `
+      usados.add(anotado.id)
+      for (const linha of doItem) await ligar(linha, anotado.id, anotado.itemId)
     }
     const fora = remover.filter((id) => doApp.has(id) && !usados.has(id))
     if (fora.length) await tx`delete from compra_item where compra_id = ${compraId} and id in ${tx(fora)}`

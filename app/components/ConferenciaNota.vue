@@ -71,12 +71,17 @@
       </template>
 
       <form v-else class="conferencia" @submit.prevent="confirmar">
-        <p class="suave">Confira cada linha da nota. O preço e a quantidade da nota substituem os anotados.</p>
+        <p class="suave">
+          Confira cada linha da nota. O preço e a quantidade da nota substituem os anotados. Um item pode estar em várias
+          linhas (o caixa passou de novo): escolha o mesmo item nelas e a compra soma.
+        </p>
         <datalist id="itens-da-nota">
           <option v-for="i in itens" :key="i.id" :value="i.nome" />
         </datalist>
-        <ul class="lista">
-          <li v-for="l in c.linhas" :key="l.ordem" class="linha-nota">
+        <template v-for="g in gruposConferencia" :key="g.titulo">
+        <h3 v-if="g.linhas.length" class="grupo-nota">{{ g.titulo }} ({{ g.linhas.length }})</h3>
+        <ul v-if="g.linhas.length" class="lista">
+          <li v-for="l in g.linhas" :key="l.ordem" class="linha-nota">
             <div class="linha">
               <span class="cresce descricao-nota">{{ l.descricao }}</span>
               <span class="num">{{ formatarDinheiro(pagoDe(l)) }}</span>
@@ -107,6 +112,7 @@
             </div>
           </li>
         </ul>
+        </template>
 
         <template v-if="semPar.length">
           <h3>Anotados que não estão na nota</h3>
@@ -203,6 +209,17 @@ function pagoDe(l: LinhaConferencia) {
   return l.total - descontoDe(l)
 }
 
+// #49: em ordem de nome, com o que precisa de atenção (sugerido, não anotado) no topo. O
+// grupo vem do casamento feito pelo servidor e não muda enquanto a pessoa ajusta os pares.
+const gruposConferencia = computed(() => {
+  const linhas = [...(c.value?.linhas ?? [])].sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR'))
+  const certa = (l: LinhaConferencia) => l.nivel === 'certo' || l.nivel === 'confirmado'
+  return [
+    { titulo: 'Para conferir', linhas: linhas.filter((l) => !certa(l)) },
+    { titulo: 'Certas', linhas: linhas.filter(certa) },
+  ]
+})
+
 /** Preço pago da unidade: o que a pessoa anota. */
 function precoPago(l: LinhaConferencia) {
   return Math.round(pagoDe(l) / l.quantidade)
@@ -286,7 +303,7 @@ function editar() {
 async function confirmar() {
   if (!c.value) return
   const decisoes: DecisaoLinha[] = []
-  const vistos = new Set<string>()
+
   for (const l of c.value.linhas) {
     const e = escolhas[l.ordem]!
     if (e.tipo === 'ignorar') decisoes.push({ ordem: l.ordem, ignorar: true })
@@ -296,8 +313,6 @@ async function confirmar() {
       if (!itemExistente(nome) && !e.categoriaId) return (problema.value = `Escolha a categoria de “${limparNome(nome)}”.`)
       decisoes.push({ ordem: l.ordem, nome, categoriaId: e.categoriaId ?? undefined })
     } else {
-      if (vistos.has(e.tipo)) return (problema.value = `${nomeAnotado(Number(e.tipo.slice(3)))} está em duas linhas da nota.`)
-      vistos.add(e.tipo)
       decisoes.push({ ordem: l.ordem, compraItemId: Number(e.tipo.slice(3)) })
     }
   }
@@ -382,6 +397,10 @@ watch(
   display: flex;
   gap: 0.5rem;
   align-items: center;
+}
+
+.grupo-nota {
+  margin: 0.75rem 0 0.25rem;
 }
 
 h3 {

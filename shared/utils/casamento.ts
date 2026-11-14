@@ -188,6 +188,19 @@ export function casarNota(linhas: LinhaNotaLida[], anotados: ItemAnotado[], codi
     anotadosLivres.delete(c.anotado.id)
   }
 
+  // #49: o mesmo produto em várias linhas (mesmo código ou mesma descrição de uma linha já
+  // casada) vai para o mesmo item anotado.
+  for (const linha of linhas) {
+    if (!linhasLivres.has(linha.ordem)) continue
+    const irma = pares.find((p) => {
+      const outra = linhas.find((l) => l.ordem === p.ordem)!
+      return (linha.codigo && outra.codigo === linha.codigo) || normalizarNome(outra.descricao) === normalizarNome(linha.descricao)
+    })
+    if (!irma) continue
+    pares.push({ ordem: linha.ordem, compraItemId: irma.compraItemId, nivel: irma.nivel, pontos: irma.pontos })
+    linhasLivres.delete(linha.ordem)
+  }
+
   return {
     pares: pares.sort((a, b) => a.ordem - b.ordem),
     linhasSemPar: [...linhasLivres].sort((a, b) => a - b),
@@ -243,4 +256,24 @@ export function descontosPelosAnotados(
   }
   const soma = [...descontos.values()].reduce((s, d) => s + d, 0)
   return { descontos, semItem: descontoNota - soma }
+}
+
+/**
+ * Várias linhas da nota para o mesmo item anotado (#49: o caixa passou o mesmo produto em
+ * linhas separadas). A linha da compra soma as quantidades e o que foi pago; o preço é o
+ * pago ÷ quantidade e o preço cheio, a média dos unitários da nota quando houve desconto.
+ * Com uma linha só, dá o mesmo que precoConferido.
+ */
+export function consolidarLinhas(
+  linhas: { unitario: number; total: number; desconto: number | null; quantidade: number }[],
+  precoCheioAnotado: number | null = null,
+): { quantidade: number; preco: number; precoCheio: number | null; total: number } {
+  const quantidade = Math.round(linhas.reduce((s, l) => s + l.quantidade, 0) * 1000) / 1000
+  const total = linhas.reduce((s, l) => s + pagoNaLinha(l), 0)
+  const preco = Math.round(total / quantidade)
+  if (linhas.some((l) => (l.desconto ?? 0) > 0)) {
+    const cheio = Math.round(linhas.reduce((s, l) => s + l.unitario * l.quantidade, 0) / quantidade)
+    return { quantidade, preco, precoCheio: cheio, total }
+  }
+  return { quantidade, preco, precoCheio: precoCheioAnotado && precoCheioAnotado > preco ? precoCheioAnotado : null, total }
 }

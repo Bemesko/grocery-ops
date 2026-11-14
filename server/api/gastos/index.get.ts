@@ -76,6 +76,27 @@ export default defineEventHandler(async (event): Promise<Gastos> => {
     item.quantidade = Math.round((item.quantidade + (l.quantidade as number)) * 1000) / 1000
     porItem.set(item.itemId, item)
   }
+  // #48: o total oficial de cada compra é o da nota. A diferença entre a nota e os itens
+  // entra nos totais (do período, do mês e do mercado) e numa linha própria das
+  // categorias, sem ser distribuída entre os itens.
+  const totaisDasCompras = await sql`
+    select ct.compra_id, ct.total - ct.itens as diferenca, m.nome as mercado, to_char(c.data, 'YYYY-MM') as mes
+    from compra c join compra_total ct on ct.compra_id = c.id join mercado m on m.id = c.mercado_id
+    where c.status = 'finalizada' and c.data between ${inicio} and ${fim}
+  `
+  let diferencaNota = 0
+  for (const c of totaisDasCompras) {
+    compras.add(c.compraId as number)
+    const d = Number(c.diferenca)
+    if (!d) continue
+    diferencaNota += d
+    total += d
+    somar(porMercado, c.mercado as string, d)
+    somar(porMes, c.mes as string, d)
+  }
+  if (diferencaNota) {
+    porCategoria.set(0, { categoriaId: 0, categoria: 'Diferença da nota', total: diferencaNota })
+  }
   const itensOrdenados = [...porItem.values()].sort((a, b) => b.total - a.total)
   const semCategoria = ({ categoriaId: _c, ...i }: GastoItem & { categoriaId: number }): GastoItem => i
 

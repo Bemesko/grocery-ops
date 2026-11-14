@@ -15,11 +15,11 @@
 
       <div class="cartao destaque">
         <div class="linha">
-          <span class="cresce">Total</span>
+          <span class="cresce">Total{{ r.compra.totalNota !== null ? ' da nota' : '' }}</span>
           <strong class="num grande">{{ formatarDinheiro(r.compra.total) }}</strong>
         </div>
         <div v-if="r.divergencia !== null" class="linha suave">
-          <span class="cresce">Nota: {{ formatarDinheiro(r.compra.totalNota) }}</span>
+          <span class="cresce">Itens: {{ formatarDinheiro(r.compra.totalItens) }}</span>
           <span :class="Math.abs(r.divergencia) <= 0.05 ? 'ok' : 'ruim'">
             {{ r.divergencia >= 0 ? '+' : '' }}{{ formatarPercentual(r.divergencia, 1) }}
             {{ Math.abs(r.divergencia) <= 0.05 ? '✓' : '— confira' }}
@@ -39,12 +39,26 @@
 
       <ConferenciaNota :compra-id="id" :anotados="r.itens" @mudou="carregar" />
 
+      <template v-if="porCategoria.length">
+        <h2>Por categoria</h2>
+        <ul class="lista categorias">
+          <li v-for="c in porCategoria" :key="c.categoria">
+            <span class="linha">
+              <span class="cresce">{{ c.categoria }}</span>
+              <span class="suave num">{{ formatarPercentual(c.total / Math.max(1, r.compra.total)) }}</span>
+              <span class="num">{{ formatarDinheiro(c.total) }}</span>
+            </span>
+            <span class="barra"><span :style="{ width: `${Math.max(0, c.total / maiorCategoria) * 100}%` }" /></span>
+          </li>
+        </ul>
+      </template>
+
       <template v-if="r.topItens.length">
         <h2>O que mais pesou</h2>
         <ul class="lista">
           <li v-for="i in r.topItens" :key="i.id">
             <span class="cresce">{{ i.nome }}</span>
-            <span class="suave num">{{ formatarPercentual(i.total / Math.max(1, r.compra.total)) }}</span>
+            <span class="suave num">{{ formatarPercentual(i.total / Math.max(1, r.compra.totalItens)) }}</span>
             <span class="num">{{ formatarDinheiro(i.total) }}</span>
           </li>
         </ul>
@@ -55,7 +69,7 @@
         <p class="aviso alerta">
           {{ r.foraDaLista.quantidade }} {{ r.foraDaLista.quantidade === 1 ? 'item' : 'itens' }} que não estavam na lista:
           <strong class="num">{{ formatarDinheiro(r.foraDaLista.total) }}</strong>
-          ({{ formatarPercentual(r.foraDaLista.total / Math.max(1, r.compra.total)) }} da compra)
+          ({{ formatarPercentual(r.foraDaLista.total / Math.max(1, r.compra.totalItens)) }} da compra)
         </p>
       </template>
 
@@ -134,6 +148,24 @@ onMounted(carregar)
 
 const projecao = computed(() => (r.value?.budget ? projetarBudget(r.value.budget) : null))
 
+// #54: distribuição da compra por categoria; a diferença da nota (#48) fica numa linha própria.
+const { categorias, nome: nomeCategoria, recarregar: recarregarCategorias } = useCategorias()
+onMounted(() => {
+  if (!categorias.value.length) recarregarCategorias().catch(() => {})
+})
+const porCategoria = computed(() => {
+  if (!r.value) return []
+  const somas = new Map<number, number>()
+  for (const i of r.value.itens) somas.set(i.categoriaId, (somas.get(i.categoriaId) ?? 0) + i.total)
+  const linhas = [...somas.entries()]
+    .map(([id, total]) => ({ categoria: nomeCategoria.value.get(id) ?? 'Outros', total }))
+    .sort((a, b) => b.total - a.total)
+  const diferenca = r.value.compra.total - r.value.compra.totalItens
+  if (diferenca) linhas.push({ categoria: 'Diferença da nota', total: diferenca })
+  return linhas
+})
+const maiorCategoria = computed(() => Math.max(1, ...porCategoria.value.map((c) => c.total)))
+
 function dataLonga(dia: string) {
   return new Date(`${dia}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })
 }
@@ -211,6 +243,11 @@ h1 {
 
 .clicavel {
   cursor: pointer;
+}
+
+.categorias li {
+  display: grid;
+  gap: 0.3rem;
 }
 
 .sem-preco {

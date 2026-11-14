@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   casarNota,
+  consolidarLinhas,
   descontosPelosAnotados,
   embalagemDaDescricao,
   nomeDaDescricao,
@@ -173,5 +174,39 @@ describe('descontosPelosAnotados', () => {
     const r = descontosPelosAnotados([l(1, 338, 40, 2)], () => ({ precoUnitario: 100 }), 40)
     assert.deepEqual([...r.descontos], [[1, 40]])
     assert.equal(r.semItem, 0)
+  })
+})
+
+describe('várias linhas do mesmo produto (#49)', () => {
+  it('a linha repetida (mesmo código ou descrição) casa com o mesmo item anotado', () => {
+    const c = casarNota(
+      [linha(1, 'AGUA MINERAL 500ML S GAS', 169, 1, '620'), linha(2, 'AGUA MINERAL 500ML S GAS', 169, 1, '620'), linha(3, 'SACOLA', 10)],
+      [anotado(1, 'Água sem gás', 169, { quantidade: 2 })],
+      new Map(),
+    )
+    assert.deepEqual(
+      c.pares.map((p) => [p.ordem, p.compraItemId]),
+      [
+        [1, 1],
+        [2, 1],
+      ],
+    )
+    assert.deepEqual(c.linhasSemPar, [3])
+  })
+
+  it('consolida: soma quantidade e pago; cheio é a média da nota quando teve desconto', () => {
+    assert.deepEqual(
+      consolidarLinhas([
+        { unitario: 169, total: 169, desconto: 20, quantidade: 1 },
+        { unitario: 169, total: 338, desconto: 0, quantidade: 2 },
+      ]),
+      { quantidade: 3, preco: 162, precoCheio: 169, total: 487 },
+    )
+    assert.deepEqual(consolidarLinhas([{ unitario: 459, total: 459, desconto: 0, quantidade: 1 }], 599), {
+      quantidade: 1,
+      preco: 459,
+      precoCheio: 599,
+      total: 459,
+    })
   })
 })

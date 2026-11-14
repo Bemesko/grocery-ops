@@ -123,7 +123,10 @@ export interface Compra {
   data: string
   origem: 'app' | 'importacao' | 'nfce'
   totalNota: number | null
+  /** Total oficial (#48): o da nota fiscal quando existe, senão a soma dos itens. */
   total: number
+  /** Soma dos itens (a divergência compara com a nota). */
+  totalItens: number
 }
 
 export interface PendenteMercado {
