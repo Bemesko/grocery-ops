@@ -4,9 +4,9 @@ export default defineEventHandler(async (event) => {
   const compraId = idDaRota(event)
   const corpo = await readBody(event)
   const linha = lerLinhaCarrinho(corpo)
-  if (linha.preco === null) erro(400, 'preço é obrigatório')
+  if (linha.preco === null && !linha.precoPendente) erro(400, 'preço é obrigatório')
   const sql = await useDb()
-  await compraEditavel(sql, compraId)
+  const compra = await compraEditavel(sql, compraId)
   const item = await resolverItem(sql, {
     itemId: inteiro(corpo?.itemId, 'itemId', { min: 1 }),
     nome: texto(corpo?.nome, 'nome', { max: 80 }),
@@ -30,12 +30,16 @@ export default defineEventHandler(async (event) => {
     where li.item_id = ${item.id} and li.status = 'aberto'
       and not exists (select 1 from compra_item ci where ci.compra_id = ${compraId} and ci.lista_item_id = li.id)
   `
+  // Sem preço (#52): entra com a estimativa (deste mercado, de outro, ou 0) e fica marcada.
+  const preco = linha.precoPendente ? await precoEstimado(sql, item.id, compra.mercadoId) : linha.preco!
   const [criado] = await sql`
     insert into compra_item (compra_id, item_id, lista_item_id, variante, unidade, quantidade,
-      preco_unitario_centavos, preco_cheio_centavos, da_lista, total_centavos, embalagem_qtd, embalagem_unidade)
+      preco_unitario_centavos, preco_cheio_centavos, da_lista, total_centavos, embalagem_qtd, embalagem_unidade,
+      preco_pendente, unidades)
     values (${compraId}, ${item.id}, ${(naLista?.id as number) ?? null}, ${linha.variante}, ${un}, ${quantidade},
-      ${linha.preco}, ${linha.precoCheio}, ${Boolean(naLista)}, ${totalItem(quantidade, linha.preco!)},
-      ${embalagem?.qtd ?? null}, ${embalagem?.unidade ?? null})
+      ${preco}, ${linha.precoCheio}, ${Boolean(naLista)}, ${totalItem(quantidade, preco)},
+      ${embalagem?.qtd ?? null}, ${embalagem?.unidade ?? null},
+      ${linha.precoPendente}, ${un === 'kg' ? linha.unidades : null})
     returning id
   `
   metricas.itensCarrinho.add(1, { 'grocery.from_list': Boolean(naLista) })

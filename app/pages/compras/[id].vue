@@ -80,8 +80,9 @@
           <span class="cresce">
             {{ i.nome }}
             <span class="suave">
-              · {{ formatarQuantidade(i.quantidade, i.unidade) }}<template v-if="i.embalagem"> de {{ formatarEmbalagem(i.embalagem) }}</template> × {{ formatarDinheiro(i.precoUnitario) }}
+              · <template v-if="i.unidades">{{ i.unidades }} un · </template>{{ formatarQuantidade(i.quantidade, i.unidade) }}<template v-if="i.embalagem"> de {{ formatarEmbalagem(i.embalagem) }}</template> × {{ formatarDinheiro(i.precoUnitario) }}
               <template v-if="i.variante"> · {{ i.variante }}</template>
+              <span v-if="i.precoPendente" class="selo sem-preco">sem preço</span>
             </span>
             <span v-if="i.daLista === false" class="selo neutro">fora da lista</span>
           </span>
@@ -91,7 +92,7 @@
 
       <h2>Total da nota</h2>
       <form class="linha" @submit.prevent="salvarNota">
-        <input v-model="notaTexto" class="cresce" inputmode="decimal" placeholder="0,00" />
+        <CampoValor v-model="notaTexto" class="cresce" placeholder="0,00" aria-label="Total da nota" />
         <button type="submit">Salvar</button>
       </form>
 
@@ -210,6 +211,13 @@ h1 {
 
 .clicavel {
   cursor: pointer;
+}
+
+.sem-preco {
+  margin-left: 0.3rem;
+  background: transparent;
+  color: var(--alerta);
+  border: 1px solid var(--alerta);
 }
 .excluir {
   margin-top: 2rem;

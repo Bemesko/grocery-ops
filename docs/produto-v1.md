@@ -71,11 +71,15 @@ A lista é o que a casa precisa; a ida ao mercado leva só uma parte. Preparar a
   - total do carrinho;
   - "faltam ≈ R$ 85 (4 itens)": estimativa dos itens selecionados ainda fora do carrinho;
   - restante do budget, em verde/amarelo/vermelho;
+  - barra do budget da semana em três trechos: o que está no carrinho e era da lista, o que está no carrinho e é fora da lista, e a estimativa do que falta (mais clara); contorno vermelho quando passa do budget;
   - linha de transbordo quando o total previsto passa do budget: `Se fechar assim: próximas 3 semanas com R$ 386,67 (era R$ 420)`.
 - Itens selecionados primeiro, por corredor. O resto da lista fica numa seção recolhida "Também na lista (5)"; comprar algo dela conta como item da lista.
 - Tocar num item abre uma folha:
-  - preço já preenchido com o último preço daquele item naquele mercado: se não mudou, um toque confirma;
-  - unidade un/kg (padrão do item); em kg, R$/kg + peso;
+  - um botão só, "Registrar": com o preço vazio, vale o último preço daquele item naquele mercado (a folha diz qual);
+  - números entram da direita para a esquerda, sem vírgula: digitar 1, 4, 9 dá 0,01 → 0,14 → 1,49 (kg com 3 casas: 0,000);
+  - "Informar o preço depois" (etiqueta escondida, conferir na máquina de consulta): o item entra pela estimativa (o último preço neste mercado, senão em outro, senão R$ 0) com o selo "sem preço", que sai ao corrigir a linha ou conferir a nota. Ao finalizar, o app avisa quantos estão sem preço. Esses preços estimados não viram referência de preço;
+  - unidade un/kg (padrão do item); em kg, R$/kg + peso e, opcional, quantas unidades (ex.: 2 mangas, 0,900 kg);
+  - tocar fora da folha pergunta antes de descartar o item; o ✕ só pergunta se algo foi preenchido;
   - quantidade (padrão: a da lista, senão 1);
   - "mais detalhes", recolhido: marca/variante e preço cheio (sem promoção).
 - No carrinho, cada item mostra o total e o selo ↑↓ em relação à última compra.
@@ -192,7 +196,8 @@ compra         id, mercado_id, status [em_andamento|finalizada|cancelada],
                desconto_nota_centavos, nfce_conferida_em, origem [app|importacao|nfce], importacao_id
 compra_item    id, compra_id, item_id, lista_item_id (quando veio da lista), variante, unidade [un|kg], quantidade numeric(10,3),
                preco_unitario_centavos, preco_cheio_centavos, da_lista (nulo = desconhecido),
-               total_centavos, embalagem_qtd, embalagem_unidade, criado_em
+               total_centavos, embalagem_qtd, embalagem_unidade, preco_pendente (preço informado depois),
+               unidades (itens por kg), criado_em
 nfce_item      id, compra_id, ordem, codigo (do produto na loja), descricao, quantidade, unidade (da nota),
                unitario_centavos (cheio), total_centavos (antes do desconto), desconto_centavos (da nota; nulo = a nota não diz),
                ean, compra_item_id (par confirmado)

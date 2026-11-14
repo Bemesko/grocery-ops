@@ -79,3 +79,16 @@ export function formatarPercentual(fracao: number, casas = 0): string {
 export function totalItem(quantidade: number, precoUnitarioCentavos: number): number {
   return Math.round(quantidade * precoUnitarioCentavos)
 }
+
+/**
+ * Entrada de número da direita para a esquerda (#53): só os dígitos contam e as últimas
+ * `casas` são decimais. "1" → "0,01", "149" → "1,49"; com 3 casas, "900" → "0,900".
+ * Sem dígitos → "" (campo vazio).
+ */
+export function formatarDigitos(texto: string, casas: number): string {
+  const digitos = texto.replace(/\D/g, '').replace(/^0+/, '')
+  if (!digitos) return ''
+  const inteiro = digitos.slice(0, -casas) || '0'
+  const decimais = digitos.slice(-casas).padStart(casas, '0')
+  return `${inteiro},${decimais}`
+}

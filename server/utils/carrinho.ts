@@ -11,7 +11,20 @@ export function lerLinhaCarrinho(corpo: Record<string, unknown> | undefined) {
     erro(400, 'quantidade com mais de 3 casas decimais')
   }
   const embalagem = embalagemEntrada(corpo?.embalagem)
-  return { unidade: un, quantidade, preco, precoCheio, variante, embalagem }
+  // Preço depois (#52): a linha entra com a estimativa e fica marcada até alguém informar.
+  const precoPendente = booleano(corpo?.precoPendente, 'precoPendente') ?? false
+  // Unidades de um item por kg (#51): só informativo, o total sai do peso.
+  const unidades = inteiro(corpo?.unidades, 'unidades', { min: 1 })
+  return { unidade: un, quantidade, preco, precoCheio, variante, embalagem, precoPendente, unidades }
+}
+
+/**
+ * Preço estimado de um item sem preço informado: o último neste mercado, senão o de outro
+ * mercado, senão 0. Não vira referência (referencias() ignora linhas com preço pendente).
+ */
+export async function precoEstimado(sql: Sql, itemId: number, mercadoId: number): Promise<number> {
+  const refs = await referencias(sql)
+  return (refs.get(`${itemId}:${mercadoId}`) ?? referenciaOutroMercado(refs, itemId, mercadoId))?.preco ?? 0
 }
 
 export async function compraEditavel(sql: Sql, id: number) {

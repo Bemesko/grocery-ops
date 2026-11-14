@@ -202,4 +202,14 @@ export const migracoes: { id: string; sql: string }[] = [
       create index item_alias_item on item_alias (item_id);
     `,
   },
+  {
+    // Preço informado depois (a linha entra com a estimativa e fica marcada) e unidades de
+    // um item comprado por kg (ex.: 2 mangas, 0,900 kg).
+    id: '007_preco_pendente_e_unidades',
+    sql: /* sql */ `
+      alter table compra_item
+        add column preco_pendente boolean not null default false,
+        add column unidades int check (unidades > 0);
+    `,
+  },
 ]

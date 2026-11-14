@@ -308,7 +308,7 @@ export async function confirmarConferencia(sql: Sql, compraId: number, decisoes:
         const embalagem = un === 'un' ? (anotado.embalagem ?? daNota) : null
         await tx`
           update compra_item set unidade = ${un}, quantidade = ${linha.quantidade}, preco_unitario_centavos = ${preco},
-            preco_cheio_centavos = ${precoCheio}, total_centavos = ${total},
+            preco_cheio_centavos = ${precoCheio}, total_centavos = ${total}, preco_pendente = false,
             embalagem_qtd = ${embalagem?.qtd ?? null}, embalagem_unidade = ${embalagem?.unidade ?? null}
           where id = ${anotado.id}
         `

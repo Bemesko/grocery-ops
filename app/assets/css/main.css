@@ -181,6 +181,16 @@ select {
   min-height: 2.75rem;
 }
 
+/* Caixas de marcar não herdam o tamanho dos campos de texto acima. */
+input[type='checkbox'] {
+  width: 1.35rem;
+  height: 1.35rem;
+  min-height: auto;
+  padding: 0;
+  flex: none;
+  accent-color: var(--primaria);
+}
+
 input:focus,
 select:focus,
 button:focus-visible {
