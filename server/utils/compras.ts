@@ -42,6 +42,6 @@ export async function resumoCompra(sql: Sql, id: number): Promise<ResumoCompra> 
     foraDaLista: { quantidade: fora.length, total: fora.reduce((s, i) => s + i.total, 0) },
     altas: comVariacao.filter((i) => pct(i) > 0).sort((a, b) => pct(b) - pct(a)).slice(0, 3),
     baixas: comVariacao.filter((i) => pct(i) < 0).sort((a, b) => pct(a) - pct(b)).slice(0, 3),
-    divergencia: compra.totalNota ? (compra.totalItens - compra.totalNota) / compra.totalNota : null,
+    divergencia: compra.totalNota && itens.length ? (compra.totalItens - compra.totalNota) / compra.totalNota : null,
   }
 }

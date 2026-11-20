@@ -7,7 +7,9 @@
 // O entity_id da lista contém o e-mail da conta da Alexa: fica no Secret, nunca no repo.
 import type { EstadoAlexa } from '../../shared/types/api'
 import { itemParaTexto } from '../../shared/utils/itemDoTexto'
+import type { Span } from '@opentelemetry/api'
 import type { Sql } from './db'
+import { emSpan, log, metricas, registrarErro } from './telemetria'
 
 const TEMPO_LIMITE = 10_000
 /** Chave do advisory lock: uma sincronização por vez, mesmo com mais de um pod. */
@@ -26,7 +28,17 @@ export function configAlexa(): ConfigAlexa | null {
   return url && token && entidade ? { url, token, entidade } : null
 }
 
-const estado: EstadoAlexa = { ligada: false, ultimaEm: null, importados: 0, erro: null }
+const estado: EstadoAlexa = {
+  ligada: false,
+  ultimaEm: null,
+  importados: 0,
+  erro: null,
+  ultimoSucessoEm: null,
+  falhasSeguidas: 0,
+}
+/** Falha repetida não vira um aviso por minuto: só a primeira, a mudança de mensagem e um lembrete. */
+const LEMBRETE_MS = 30 * 60_000
+let ultimoAvisoEm = 0
 
 export function estadoAlexa(): EstadoAlexa {
   return { ...estado, ligada: Boolean(configAlexa()) }
@@ -72,8 +84,12 @@ async function pendentes(config: ConfigAlexa): Promise<ItemHa[]> {
  * os já importados. Devolve o estado (também guardado para a tela de Ajustes).
  */
 export async function sincronizarAlexa(sql: Sql): Promise<EstadoAlexa> {
-  const config = configAlexa()
-  if (!config) return estadoAlexa()
+  if (!configAlexa()) return estadoAlexa()
+  return emSpan('alexa.sincronizar', (span) => rodada(sql, span))
+}
+
+async function rodada(sql: Sql, span: Span): Promise<EstadoAlexa> {
+  const config = configAlexa()!
   try {
     const itensHa = await pendentes(config)
     const novos = await sql.begin(async (tx) => {
@@ -119,15 +135,28 @@ export async function sincronizarAlexa(sql: Sql): Promise<EstadoAlexa> {
       await sql`update alexa_importado set concluido_no_ha = true where uid = ${uid as string}`
     }
 
-    Object.assign(estado, { ultimaEm: new Date().toISOString(), importados: novos, erro: null })
+    const agora = new Date().toISOString()
+    if (estado.falhasSeguidas) log('info', 'alexa: sincronização voltou', { falhas_seguidas: estado.falhasSeguidas })
+    Object.assign(estado, { ultimaEm: agora, ultimoSucessoEm: agora, importados: novos, erro: null, falhasSeguidas: 0 })
     if (novos) {
       metricas.itensAlexa.add(novos)
       log('info', 'alexa sincronizada', { importados: novos })
     }
   } catch (e) {
     const mensagem = e instanceof Error ? e.message : String(e)
-    Object.assign(estado, { ultimaEm: new Date().toISOString(), importados: 0, erro: mensagem })
-    log('warn', 'alexa: sincronização falhou', { erro: mensagem })
+    const mudou = mensagem !== estado.erro
+    Object.assign(estado, {
+      ultimaEm: new Date().toISOString(),
+      importados: 0,
+      erro: mensagem,
+      falhasSeguidas: estado.falhasSeguidas + 1,
+    })
+    registrarErro(span, e)
+    metricas.falhasAlexa.add(1)
+    if (mudou || Date.now() - ultimoAvisoEm >= LEMBRETE_MS) {
+      ultimoAvisoEm = Date.now()
+      log('warn', 'alexa: sincronização falhou', { erro: mensagem, falhas_seguidas: estado.falhasSeguidas })
+    }
   }
   return estadoAlexa()
 }

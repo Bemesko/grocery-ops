@@ -122,7 +122,7 @@ export interface Compra {
   mercado: string
   status: 'em_andamento' | 'finalizada' | 'cancelada'
   data: string
-  origem: 'app' | 'importacao' | 'nfce'
+  origem: 'app' | 'importacao' | 'nfce' | 'manual'
   totalNota: number | null
   /** Total oficial (#48): o da nota fiscal quando existe, senão a soma dos itens. */
   total: number
@@ -272,6 +272,10 @@ export interface EstadoAlexa {
   /** Itens que entraram na lista na última rodada. */
   importados: number
   erro: string | null
+  /** Última rodada que deu certo (ISO); null se nenhuma desde que o servidor subiu. */
+  ultimoSucessoEm: string | null
+  /** Rodadas seguidas que falharam (0 = a última deu certo). */
+  falhasSeguidas: number
 }
 
 export interface Configuracao {

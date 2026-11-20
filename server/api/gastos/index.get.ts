@@ -80,20 +80,25 @@ export default defineEventHandler(async (event): Promise<Gastos> => {
   // entra nos totais (do período, do mês e do mercado) e numa linha própria das
   // categorias, sem ser distribuída entre os itens.
   const totaisDasCompras = await sql`
-    select ct.compra_id, ct.total - ct.itens as diferenca, m.nome as mercado, to_char(c.data, 'YYYY-MM') as mes
+    select ct.compra_id, ct.total - ct.itens as diferenca, m.nome as mercado, to_char(c.data, 'YYYY-MM') as mes,
+      not exists (select 1 from compra_item x where x.compra_id = c.id) as sem_itens
     from compra c join compra_total ct on ct.compra_id = c.id join mercado m on m.id = c.mercado_id
     where c.status = 'finalizada' and c.data between ${inicio} and ${fim}
   `
   let diferencaNota = 0
+  let semItens = 0
   for (const c of totaisDasCompras) {
     compras.add(c.compraId as number)
     const d = Number(c.diferenca)
     if (!d) continue
-    diferencaNota += d
+    if (c.semItens) semItens += d
+    else diferencaNota += d
     total += d
     somar(porMercado, c.mercado as string, d)
     somar(porMes, c.mes as string, d)
   }
+  // #65: compras registradas só pelo total (sem itens) ficam numa linha própria.
+  if (semItens) porCategoria.set(-1, { categoriaId: -1, categoria: 'Compras sem itens', total: semItens })
   if (diferencaNota) {
     porCategoria.set(0, { categoriaId: 0, categoria: 'Diferença da nota', total: diferencaNota })
   }

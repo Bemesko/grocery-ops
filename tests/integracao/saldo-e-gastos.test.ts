@@ -105,4 +105,30 @@ describe('gastos', () => {
     assert.equal(g.porMes.length, 3)
     assert.equal(g.semanas, null)
   })
+
+  it('compra manual (#65): só o total, conta no saldo e aparece em "Compras sem itens"', async () => {
+    await api.post('/api/saldo', { saldo: 50_000 })
+    const m = await api.post<{ id: number }>('/api/mercados', { nome: 'Padaria' })
+    const hoje = hojeSP()
+    assert.equal((await api.post('/api/compras/manual', { mercadoId: m.corpo.id, data: somarDias(hoje, 1), total: 1_000 })).status, 400)
+    assert.equal((await api.post('/api/compras/manual', { mercadoId: m.corpo.id, data: hoje, total: 0 })).status, 400)
+    assert.equal((await api.post('/api/compras/manual', { mercadoId: 9_999, data: hoje, total: 1_000 })).status, 404)
+    const r = await api.post<{ compraId: number }>('/api/compras/manual', { mercadoId: m.corpo.id, data: hoje, total: 4_550 })
+    assert.equal(r.status, 200)
+
+    const c = conforme(contrato.resumoCompra, await api.get(`/api/compras/${r.corpo.compraId}`))
+    assert.equal(c.compra.origem, 'manual')
+    assert.equal(c.compra.total, 4_550)
+    assert.equal(c.itens.length, 0)
+    assert.equal(c.divergencia, null)
+    assert.equal(conforme(contrato.saldo, await api.get('/api/saldo')).budget.saldo, 50_000 - 4_550)
+
+    const g = conforme(contrato.gastos, await api.get('/api/gastos'))
+    assert.equal(g.total, 4_550)
+    assert.equal(g.compras, 1)
+    assert.deepEqual(
+      g.porCategoria.map((x) => [x.categoria, x.total]),
+      [['Compras sem itens', 4_550]],
+    )
+  })
 })
