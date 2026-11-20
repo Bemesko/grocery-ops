@@ -157,17 +157,37 @@ describe('evolucaoSemanas', () => {
     )
   })
 
-  it('domingo 8/nov depois da ida de sexta: as 3 semanas seguintes com R$ 220', () => {
+  it('a semana atual guarda o orçamento inteiro: o gasto dela não mexe nas futuras', () => {
+    // domingo 8/nov, saldo 660 depois de 135,01 gastos na semana de 9/11: (660 + 135,01) / 4
     const e = evolucaoSemanas(semanas, new Map([['2026-11-09', 135_01]]), 660_00, '2026-11-08')
     assert.equal(e[0]!.situacao, 'atual')
+    assert.equal(e[0]!.budget, 198_75)
     assert.deepEqual(
       e.slice(1).map((x) => [x.budget, x.situacao]),
       [
-        [220_00, 'futura'],
-        [220_00, 'futura'],
-        [220_00, 'futura'],
+        [198_75, 'futura'],
+        [198_75, 'futura'],
+        [198_75, 'futura'],
       ],
     )
+  })
+
+  it('#64: compra pequena antes da ida principal não infla a última semana', () => {
+    // 20/11: saldo 412,63 antes das compras da semana de 23/11 (2 semanas restantes);
+    // a compra de 25,11 já foi finalizada, a de 216,34 ainda não
+    const semanasNov = semanasDoCiclo('2026-11', SEXTA).slice(-2)
+    const saldoFim = 412_63 - 25_11
+    const e = evolucaoSemanas(semanasNov, new Map([['2026-11-23', 25_11]]), saldoFim, '2026-11-20')
+    assert.equal(e[0]!.budget, 206_32) // 412,63 / 2
+    assert.equal(e[1]!.budget, 206_31) // não 387,52
+    assert.equal(e[1]!.situacao, 'futura')
+  })
+
+  it('#64: estourar a semana atual também não mexe nas futuras', () => {
+    const semanasNov = semanasDoCiclo('2026-11', SEXTA).slice(-2)
+    const e = evolucaoSemanas(semanasNov, new Map([['2026-11-23', 300_00]]), 112_63, '2026-11-20')
+    assert.equal(e[0]!.budget, 206_32)
+    assert.equal(e[1]!.budget, 206_31)
   })
 
   it('sem ajuste de saldo no ciclo, só o gasto', () => {

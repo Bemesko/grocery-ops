@@ -1,34 +1,26 @@
 import type { GastoItem, Gastos } from '../../../shared/types/api'
+import { baseDe, conteudoBase, embalagemDe, type BaseEmbalagem } from '../../../shared/utils/embalagem'
+import { limitesDoPeriodo, mesesDoPeriodo, somarMeses, tipoDoPeriodo } from '../../../shared/utils/periodos'
 
 /**
- * Gastos de um mês (o ciclo do VR) ou de um trimestre civil.
- * ?periodo=AAAA-MM | AAAA-Tn (T1 = jan–mar); o antigo ?mes=AAAA-MM continua valendo.
- * Padrão: o mês atual.
+ * Gastos de um mês (o ciclo do VR), trimestre, semestre ou ano civil.
+ * ?periodo=AAAA-MM | AAAA-Tn (T1 = jan–mar) | AAAA-Sn (S1 = jan–jun) | AAAA; o antigo
+ * ?mes=AAAA-MM continua valendo. Padrão: o mês atual. Meses futuros trazem a projeção (#67).
  */
 export default defineEventHandler(async (event): Promise<Gastos> => {
   const q = getQuery(event)
   const consulta = typeof q.periodo === 'string' ? q.periodo : typeof q.mes === 'string' ? q.mes : ''
   const hoje = hojeSP()
-  let tipo: Gastos['tipo'] = 'mes'
-  let periodo = hoje.slice(0, 7)
-  let inicio: string
-  let fim: string
-  const tri = /^(\d{4})-T([1-4])$/.exec(consulta)
-  if (tri) {
-    tipo = 'trimestre'
-    periodo = consulta
-    const primeiroMes = (Number(tri[2]) - 1) * 3 + 1
-    inicio = `${tri[1]}-${String(primeiroMes).padStart(2, '0')}-01`
-    fim = ultimoDiaDoMes(`${tri[1]}-${String(primeiroMes + 2).padStart(2, '0')}-01`)
-  } else {
-    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(consulta)) periodo = consulta
-    inicio = `${periodo}-01`
-    fim = ultimoDiaDoMes(inicio)
-  }
+  const mesAtual = hoje.slice(0, 7)
+  const periodo = tipoDoPeriodo(consulta) ? consulta : mesAtual
+  const tipo = tipoDoPeriodo(periodo)!
+  const { inicio, fim } = limitesDoPeriodo(periodo)
 
   const sql = await useDb()
   const linhas = await sql`
     select ci.item_id, i.nome, ci.unidade, ci.quantidade, ci.total_centavos as total, ci.da_lista,
+      coalesce(ci.embalagem_qtd, i.embalagem_qtd)::float8 as emb_qtd,
+      coalesce(ci.embalagem_unidade, i.embalagem_unidade) as emb_unidade,
       i.categoria_id, cat.nome as categoria, m.nome as mercado, c.id as compra_id,
       to_char(c.data, 'YYYY-MM') as mes
     from compra c
@@ -41,7 +33,8 @@ export default defineEventHandler(async (event): Promise<Gastos> => {
 
   // Agregações em memória: um período tem no máximo algumas centenas de linhas.
   const somar = <K>(mapa: Map<K, number>, k: K, v: number) => mapa.set(k, (mapa.get(k) ?? 0) + v)
-  const porItem = new Map<number, GastoItem & { categoriaId: number }>()
+  type ItemAgregado = GastoItem & { categoriaId: number; semConteudo?: boolean }
+  const porItem = new Map<number, ItemAgregado>()
   const porCategoria = new Map<number, { categoriaId: number; categoria: string; total: number }>()
   const porMercado = new Map<string, number>()
   const porMes = new Map<string, number>()
@@ -71,9 +64,23 @@ export default defineEventHandler(async (event): Promise<Gastos> => {
       total: 0,
       quantidade: 0,
       unidade: l.unidade as GastoItem['unidade'],
+      conteudo: null,
     }
     item.total += valor
     item.quantidade = Math.round((item.quantidade + (l.quantidade as number)) * 1000) / 1000
+    // #71: conteúdo total (kg ou L) das linhas em unidades que têm embalagem. Uma linha sem
+    // embalagem, ou de outra natureza (kg × L), tira o item da soma: não dá para somar.
+    if (l.unidade === 'un' && !item.semConteudo) {
+      const emb = embalagemDe(l.embQtd, l.embUnidade)
+      const base: BaseEmbalagem | null = emb ? baseDe(emb.unidade) : null
+      if (!emb || base === 'un' || (item.conteudo && item.conteudo.base !== base)) {
+        item.semConteudo = true
+        item.conteudo = null
+      } else {
+        const qtd = (item.conteudo?.qtd ?? 0) + (l.quantidade as number) * conteudoBase(emb)
+        item.conteudo = { qtd: Math.round(qtd * 1000) / 1000, base }
+      }
+    }
     porItem.set(item.itemId, item)
   }
   // #48: o total oficial de cada compra é o da nota. A diferença entre a nota e os itens
@@ -98,13 +105,29 @@ export default defineEventHandler(async (event): Promise<Gastos> => {
     porCategoria.set(0, { categoriaId: 0, categoria: 'Diferença da nota', total: diferencaNota })
   }
   const itensOrdenados = [...porItem.values()].sort((a, b) => b.total - a.total)
-  const semCategoria = ({ categoriaId: _c, ...i }: GastoItem & { categoriaId: number }): GastoItem => i
+  const semCategoria = ({ categoriaId: _c, semConteudo: _s, ...i }: ItemAgregado): GastoItem => i
 
   const meses = await sql`
     select distinct to_char(data, 'YYYY-MM') as mes from compra where status = 'finalizada' order by mes desc
   `
-  const mesesDoPeriodo: string[] = []
-  for (let d = inicio; d <= fim; d = somarDias(ultimoDiaDoMes(d), 1)) mesesDoPeriodo.push(d.slice(0, 7))
+
+  // Semana a semana só para um mês: o passado e o atual pelo que foi gasto; os futuros (até
+  // 12 meses) pela projeção da recarga mensal.
+  let semanas: Gastos['semanas'] = null
+  let saldo: number | null = null
+  let projecao = false
+  if (tipo === 'mes') {
+    if (periodo <= mesAtual) {
+      const r = await semanasDoMes(sql, periodo, hoje)
+      semanas = r.semanas
+      saldo = r.saldo
+    } else if (periodo <= somarMeses(mesAtual, 12)) {
+      projecao = true
+      const recarga = await recargaMensal(sql)
+      semanas = await semanasProjetadas(sql, periodo, recarga)
+      saldo = recarga
+    }
+  }
 
   return {
     tipo,
@@ -114,13 +137,15 @@ export default defineEventHandler(async (event): Promise<Gastos> => {
     meses: meses.map((m) => m.mes as string),
     total,
     compras: compras.size,
-    porMes: mesesDoPeriodo.map((mes) => ({ mes, total: porMes.get(mes) ?? 0 })),
+    porMes: mesesDoPeriodo(periodo).map((mes) => ({ mes, total: porMes.get(mes) ?? 0 })),
     porCategoria: [...porCategoria.values()]
       .sort((a, b) => b.total - a.total)
       .map((c) => ({ ...c, itens: itensOrdenados.filter((i) => i.categoriaId === c.categoriaId).map(semCategoria) })),
     porMercado: [...porMercado.entries()].map(([mercado, t]) => ({ mercado, total: t })).sort((a, b) => b.total - a.total),
     topItens: itensOrdenados.slice(0, 10).map(semCategoria),
     foraDaLista: { total: fora, conhecido },
-    semanas: tipo === 'mes' && periodo <= hoje.slice(0, 7) ? await semanasDoMes(sql, periodo, hoje) : null,
+    semanas,
+    saldo,
+    projecao,
   }
 })

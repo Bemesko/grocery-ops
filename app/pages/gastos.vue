@@ -9,18 +9,17 @@
     </header>
 
     <div class="chips modo" role="radiogroup" aria-label="Período">
-      <button type="button" class="chip" :class="{ ativo: tipo === 'mes' }" role="radio" :aria-checked="tipo === 'mes'" @click="trocarTipo('mes')">
-        Mês
-      </button>
       <button
+        v-for="t in TIPOS"
+        :key="t.tipo"
         type="button"
         class="chip"
-        :class="{ ativo: tipo === 'trimestre' }"
+        :class="{ ativo: tipo === t.tipo }"
         role="radio"
-        :aria-checked="tipo === 'trimestre'"
-        @click="trocarTipo('trimestre')"
+        :aria-checked="tipo === t.tipo"
+        @click="trocarTipo(t.tipo)"
       >
-        Trimestre
+        {{ t.nome }}
       </button>
     </div>
 
@@ -31,17 +30,17 @@
     </div>
 
     <template v-if="g">
-      <p v-if="!g.compras && !g.semanas?.some((s) => s.budget !== null)" class="vazio">
-        Nenhuma compra {{ g.tipo === 'mes' ? 'neste mês' : 'neste trimestre' }}.<br />
+      <p v-if="!g.compras && !g.projecao && !g.semanas?.some((s) => s.budget !== null)" class="vazio">
+        Nenhuma compra {{ NO_PERIODO[g.tipo] }}.<br />
         <NuxtLink to="/ajustes#importar">Importar histórico</NuxtLink>
       </p>
       <template v-else>
-        <div class="cartao totais">
+        <div v-if="!g.projecao" class="cartao totais">
           <div>
             <span class="suave">Total</span>
             <strong class="num grande">{{ formatarDinheiro(g.total) }}</strong>
           </div>
-          <div v-if="g.tipo === 'trimestre'">
+          <div v-if="g.tipo !== 'mes'">
             <span class="suave">Média/mês</span>
             <strong class="num grande">{{ formatarDinheiro(mediaMensal) }}</strong>
           </div>
@@ -54,8 +53,20 @@
             <strong class="num grande">{{ formatarPercentual(g.foraDaLista.total / g.foraDaLista.conhecido) }}</strong>
           </div>
         </div>
+        <div v-if="g.saldo !== null && !g.projecao" class="cartao saldo" :class="{ negativo: g.saldo < 0 }">
+          <span class="suave">{{ g.periodo === mesAtual() ? 'Saldo restante' : 'Saldo no fim do mês' }}</span>
+          <strong class="num destaque">{{ formatarDinheiro(g.saldo) }}</strong>
+        </div>
+        <p v-if="g.projecao" class="aviso info">
+          <template v-if="g.saldo !== null">
+            Projeção: recarga de {{ formatarDinheiro(g.saldo) }} dividida pelas semanas do mês.
+          </template>
+          <template v-else>
+            Defina a <NuxtLink to="/ajustes#saldo">recarga mensal do VR</NuxtLink> para ver o orçamento projetado.
+          </template>
+        </p>
 
-        <template v-if="g.tipo === 'trimestre'">
+        <template v-if="g.tipo !== 'mes'">
           <h2>Mês a mês</h2>
           <ul class="lista">
             <li v-for="m in g.porMes" :key="m.mes">
@@ -109,7 +120,7 @@
               </div>
             </li>
           </ul>
-          <p v-if="!temBudget" class="suave">
+          <p v-if="!temBudget && !g.projecao" class="suave">
             Sem ajuste de saldo neste mês: só o gasto. O orçamento aparece a partir de um
             <NuxtLink to="/ajustes#saldo">ajuste de saldo</NuxtLink> no mês.
           </p>
@@ -122,7 +133,7 @@
               <NuxtLink :to="`/itens/${i.itemId}`" class="barra-linha">
                 <span class="linha">
                   <span class="cresce">{{ n + 1 }}. {{ i.nome }}</span>
-                  <span class="suave num">{{ formatarQuantidade(i.quantidade, i.unidade) }}</span>
+                  <span class="suave num">{{ quantidadeTexto(i) }}</span>
                   <span class="num">{{ formatarDinheiro(i.total) }}</span>
                 </span>
                 <span class="barra"><span :style="{ width: `${(i.total / maiorItem) * 100}%` }" /></span>
@@ -152,7 +163,7 @@
                   <NuxtLink :to="`/itens/${i.itemId}`" class="barra-linha">
                     <span class="linha">
                       <span class="cresce">{{ i.nome }}</span>
-                      <span class="suave num">{{ formatarQuantidade(i.quantidade, i.unidade) }}</span>
+                      <span class="suave num">{{ quantidadeTexto(i) }}</span>
                       <span class="suave num">{{ formatarPercentual(i.total / c.total) }}</span>
                       <span class="num">{{ formatarDinheiro(i.total) }}</span>
                     </span>
@@ -180,13 +191,26 @@
 </template>
 
 <script setup lang="ts">
-import type { Gastos } from '../../shared/types/api'
+import type { GastoItem, Gastos } from '../../shared/types/api'
+
+const TIPOS: { tipo: Gastos['tipo']; nome: string }[] = [
+  { tipo: 'mes', nome: 'Mês' },
+  { tipo: 'trimestre', nome: 'Trimestre' },
+  { tipo: 'semestre', nome: 'Semestre' },
+  { tipo: 'ano', nome: 'Ano' },
+]
+const NO_PERIODO: Record<Gastos['tipo'], string> = {
+  mes: 'neste mês',
+  trimestre: 'neste trimestre',
+  semestre: 'neste semestre',
+  ano: 'neste ano',
+}
 
 const rota = useRoute()
 const g = ref<Gastos | null>(null)
 const consultaInicial = typeof rota.query.periodo === 'string' ? rota.query.periodo : typeof rota.query.mes === 'string' ? rota.query.mes : ''
 const periodo = ref(consultaInicial)
-const tipo = computed<Gastos['tipo']>(() => (/-T\d$/.test(periodo.value) ? 'trimestre' : 'mes'))
+const tipo = computed<Gastos['tipo']>(() => tipoDoPeriodo(periodo.value) ?? 'mes')
 const aberta = ref<number | null>(null)
 
 async function carregar() {
@@ -199,30 +223,19 @@ async function carregar() {
 onMounted(carregar)
 
 const mesAtual = () => hojeSP().slice(0, 7)
-const trimestreDe = (mes: string) => `${mes.slice(0, 4)}-T${Math.ceil(Number(mes.slice(5, 7)) / 3)}`
+const MESES_A_FRENTE = 12 // meses futuros que dá para projetar (#67)
 
-function somarMes(m: string, n: number) {
-  const [a, mm] = m.split('-').map(Number) as [number, number]
-  return new Date(Date.UTC(a, mm - 1 + n, 1)).toISOString().slice(0, 7)
-}
-function somarTrimestre(t: string, n: number) {
-  const ano = Number(t.slice(0, 4))
-  const indice = ano * 4 + Number(t.slice(-1)) - 1 + n
-  return `${Math.floor(indice / 4)}-T${(indice % 4) + 1}`
-}
-
-// Navega até o período mais antigo com compras e até o atual.
+// Navega até o período mais antigo com compras e até o atual (no mês, até a projeção).
 const anterior = computed(() => {
   if (!g.value) return ''
   const antigo = g.value.meses.at(-1)
   if (!antigo) return ''
-  if (tipo.value === 'mes') return antigo < periodo.value ? somarMes(periodo.value, -1) : ''
-  return trimestreDe(antigo) < periodo.value ? somarTrimestre(periodo.value, -1) : ''
+  return primeiroMes(periodo.value) > antigo ? somarPeriodos(periodo.value, -1) : ''
 })
 const proximo = computed(() => {
   if (!periodo.value) return ''
-  if (tipo.value === 'mes') return periodo.value < mesAtual() ? somarMes(periodo.value, 1) : ''
-  return periodo.value < trimestreDe(mesAtual()) ? somarTrimestre(periodo.value, 1) : ''
+  const limite = tipo.value === 'mes' ? somarMeses(mesAtual(), MESES_A_FRENTE) : periodoDoMes(mesAtual(), tipo.value)
+  return periodo.value < limite ? somarPeriodos(periodo.value, 1) : ''
 })
 
 function ir(p: string) {
@@ -235,12 +248,11 @@ function ir(p: string) {
 
 function trocarTipo(novo: Gastos['tipo']) {
   if (novo === tipo.value || !g.value) return
-  // Mês → trimestre que o contém; trimestre → mês atual se ele está no trimestre, senão o último.
-  if (novo === 'trimestre') ir(trimestreDe(periodo.value))
-  else {
-    const ultimo = g.value.porMes.at(-1)!.mes
-    ir(trimestreDe(mesAtual()) === periodo.value ? mesAtual() : ultimo)
-  }
+  // Vai para o período do novo tipo que contém o mês atual, se o período de agora o contém;
+  // senão, o que contém o primeiro mês do período de agora.
+  const meses = mesesDoPeriodo(periodo.value)
+  const mes = meses.includes(mesAtual()) ? mesAtual() : meses[0]!
+  ir(periodoDoMes(mes, novo))
 }
 
 function abrirMes(mes: string) {
@@ -259,13 +271,23 @@ function nomeMesCurto(m: string) {
 }
 function nomePeriodo(p: string) {
   if (!p) return ''
+  const nomeCurto = (m: number) =>
+    new Date(2000, m - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
   const t = /^(\d{4})-T(\d)$/.exec(p)
-  if (!t) return nomeMes(p)
-  const n = Number(t[2])
-  const meses = [n * 3 - 2, n * 3].map((m) =>
-    new Date(2000, m - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
-  )
-  return `${n}º trimestre de ${t[1]} (${meses[0]}–${meses[1]})`
+  if (t) {
+    const n = Number(t[2])
+    return `${n}º trimestre de ${t[1]} (${nomeCurto(n * 3 - 2)}–${nomeCurto(n * 3)})`
+  }
+  const sm = /^(\d{4})-S(\d)$/.exec(p)
+  if (sm) return `${sm[2]}º semestre de ${sm[1]} (${sm[2] === '1' ? 'jan–jun' : 'jul–dez'})`
+  if (/^\d{4}$/.test(p)) return p
+  return nomeMes(p)
+}
+
+/** "3 un · 2,4 kg": a quantidade e, quando dá para somar, o conteúdo total. */
+function quantidadeTexto(i: GastoItem) {
+  const q = formatarQuantidade(i.quantidade, i.unidade)
+  return i.conteudo ? `${q} · ${formatarConteudo(i.conteudo)}` : q
 }
 function diaMes(dia: string) {
   return `${dia.slice(8, 10)}/${dia.slice(5, 7)}`
@@ -301,18 +323,40 @@ const maiorSemana = computed(() =>
   text-align: center;
 }
 
+/* Os números do resumo quebram de linha em vez de invadir o vizinho (#73). */
 .totais {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
-  gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
 }
 
 .totais div {
   display: grid;
+  flex: 1 1 auto;
 }
 
 .grande {
   font-size: 1.35rem;
+}
+
+.saldo {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.5rem;
+  border-color: var(--primaria);
+}
+
+.saldo.negativo {
+  border-color: var(--perigo);
+}
+
+.destaque {
+  font-size: 1.75rem;
+  color: var(--primaria);
+}
+
+.saldo.negativo .destaque {
+  color: var(--perigo);
 }
 
 .cresce {

@@ -182,7 +182,14 @@ export const respostaLeituraNota = z
   .strict()
 
 const gastoItem = z
-  .object({ itemId: z.number().int(), nome: z.string(), total: centavos, quantidade: z.number(), unidade })
+  .object({
+    itemId: z.number().int(),
+    nome: z.string(),
+    total: centavos,
+    quantidade: z.number(),
+    unidade,
+    conteudo: z.object({ qtd: z.number(), base: z.enum(['kg', 'l']) }).strict().nullable(),
+  })
   .strict()
 
 export const semanaEvolucao = z
@@ -200,7 +207,7 @@ export const semanaEvolucao = z
 
 export const gastos = z
   .object({
-    tipo: z.enum(['mes', 'trimestre']),
+    tipo: z.enum(['mes', 'trimestre', 'semestre', 'ano']),
     periodo: z.string(),
     inicio: dia,
     fim: dia,
@@ -215,6 +222,8 @@ export const gastos = z
     topItens: z.array(gastoItem),
     foraDaLista: z.object({ total: centavos, conhecido: centavos }).strict(),
     semanas: z.array(semanaEvolucao).nullable(),
+    saldo: centavos.nullable(),
+    projecao: z.boolean(),
   })
   .strict()
 
