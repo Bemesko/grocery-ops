@@ -50,7 +50,7 @@
           </div>
           <div v-if="g.foraDaLista.conhecido">
             <span class="suave">Fora da lista</span>
-            <strong class="num grande">{{ formatarPercentual(g.foraDaLista.total / g.foraDaLista.conhecido) }}</strong>
+            <strong class="num grande atencao">{{ formatarPercentual(g.foraDaLista.total / g.foraDaLista.conhecido) }}</strong>
           </div>
         </div>
         <div v-if="g.saldo !== null && !g.projecao" class="cartao saldo" :class="{ negativo: g.saldo < 0 }">
