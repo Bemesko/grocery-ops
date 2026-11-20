@@ -51,7 +51,7 @@
           </div>
           <div v-if="g.foraDaLista.conhecido">
             <span class="suave">Fora da lista</span>
-            <strong class="num grande">{{ formatarPercentual(g.foraDaLista.total / g.foraDaLista.conhecido) }}</strong>
+            <strong class="num grande atencao">{{ formatarPercentual(g.foraDaLista.total / g.foraDaLista.conhecido) }}</strong>
           </div>
         </div>
 

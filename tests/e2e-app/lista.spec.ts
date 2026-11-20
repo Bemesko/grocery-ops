@@ -87,3 +87,14 @@ test('arrastar para a direita marca como comprado; para a esquerda tira da lista
   const lista = await api<{ itens: unknown[] }>('GET', '/api/lista')
   expect(lista.itens).toHaveLength(0)
 })
+
+test('preparar ida: item adicionado já vem marcado (#72) e a lista mostra desde quando (#68)', async ({ page }) => {
+  await api('POST', '/api/lista', { nome: 'Leite', categoriaId: CATEGORIA.laticinios })
+  await page.goto('/')
+  await expect(page.locator('li.arrastavel', { hasText: 'Leite' })).toContainText('na lista hoje')
+  await page.getByRole('button', { name: /Preparar ida/ }).click()
+  await page.getByPlaceholder('Adicionar item…').fill('Pilha AA')
+  await page.getByRole('button', { name: /Adicionar “Pilha AA”/ }).click()
+  await page.getByRole('button', { name: 'Adicionar', exact: true }).click()
+  await expect(page.locator('li.arrastavel', { hasText: 'Pilha AA' }).getByRole('checkbox')).toBeChecked()
+})

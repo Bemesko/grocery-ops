@@ -79,13 +79,22 @@
           >
             <span class="caixa" aria-hidden="true" />
             <span class="cresce">
-              <MarcaPrioridade v-if="p.prioritario" ligada pequena />
+              <button
+                type="button"
+                class="icone prioridade"
+                :aria-label="p.prioritario ? 'Tirar a prioridade' : 'Marcar como prioridade'"
+                :aria-pressed="p.prioritario"
+                @click.stop="alternarPrioridade(p)"
+              >
+                <MarcaPrioridade :ligada="p.prioritario" pequena />
+              </button>
               {{ p.nome }}
               <span v-if="p.quantidade" class="suave">· {{ p.quantidade }}</span>
             </span>
             <span v-if="p.estimativa !== null" class="suave num" :title="p.estimativaOutroMercado ? 'preço de outro mercado' : ''">
               ≈ {{ formatarDinheiro(p.estimativa) }}{{ p.estimativaOutroMercado ? '*' : '' }}
             </span>
+            <button type="button" class="icone" :aria-label="`Tirar ${p.nome} da lista`" @click.stop="tirarDaLista(p)">✕</button>
           </li>
           <li v-for="c in grupo.carrinho" :key="`c${c.id}`" class="pego" @click="abrirLinha(c)">
             <span class="caixa marcada" aria-hidden="true">✓</span>
@@ -96,7 +105,7 @@
                 <template v-if="c.variante"> · {{ c.variante }}</template>
               </span>
               <span v-if="c.precoPendente" class="selo alerta-selo">sem preço</span>
-              <span v-if="c.daLista === false" class="selo neutro">fora da lista</span>
+              <span v-if="c.daLista === false" class="selo alerta">fora da lista</span>
               <SeloVariacao :variacao="c.variacao" class="selos-linha" />
             </span>
             <span class="num">{{ formatarDinheiro(c.total) }}</span>
@@ -113,6 +122,8 @@
             <span class="caixa" aria-hidden="true" />
             <span class="cresce">{{ p.nome }}</span>
             <span v-if="p.estimativa !== null" class="suave num">≈ {{ formatarDinheiro(p.estimativa) }}</span>
+            <button type="button" class="texto" :aria-label="`Levar ${p.nome} nesta ida`" @click.stop="levarNestaIda(p)">+ ida</button>
+            <button type="button" class="icone" :aria-label="`Tirar ${p.nome} da lista`" @click.stop="tirarDaLista(p)">✕</button>
           </li>
         </ul>
       </section>
@@ -126,7 +137,7 @@
         <button type="button" class="texto perigo-texto" @click="cancelar">Cancelar compra</button>
       </div>
 
-      <button type="button" class="mais primario" aria-label="Item fora da lista" @click="adicionandoNovo = true">+</button>
+      <button type="button" class="mais primario" aria-label="Item fora da lista" @click="abrirAdicionar">+</button>
     </template>
 
     <!-- item fora da lista: primeiro o nome -->
@@ -136,6 +147,10 @@
           <h2>O que entrou no carrinho?</h2>
           <button type="button" class="icone" aria-label="Fechar" @click="adicionandoNovo = false">✕</button>
         </div>
+        <label class="linha so-lista">
+          <input v-model="soNaLista" type="checkbox" />
+          <span>Ainda não peguei: só pôr na lista desta ida</span>
+        </label>
         <BuscaItem :itens="itens" autofocus placeholder="Nome do item" @escolher="escolherExistente" @novo="escolherNovo" />
         <div class="espaco" />
       </div>
@@ -233,11 +248,16 @@ const mercados = ref<Mercado[]>([])
 const carregado = ref(false)
 const folha = ref<Folha | null>(null)
 const adicionandoNovo = ref(false)
+const soNaLista = ref(false)
+function abrirAdicionar() {
+  soNaLista.value = false // o padrão é o que entrou no carrinho
+  adicionandoNovo.value = true
+}
 const mostrarOutros = ref(false)
 const fechando = ref(false)
 const totalNotaTexto = ref('')
 const { itens, recarregar: recarregarItens } = useItens()
-const { categorias, recarregar: recarregarCategorias } = useCategorias()
+const { categorias, recarregar: recarregarCategorias, outros } = useCategorias()
 
 async function carregar() {
   const r = await tentar(() => $fetch<RespostaCompraAtual>('/api/compras/atual'))
@@ -356,7 +376,37 @@ function abrirLinha(c: CompraItem) {
   }
 }
 
+// #45: mexer na lista sem sair do Mercado. Tudo isto vale para a ida em andamento.
+async function mudarNaLista(p: PendenteMercado, corpo: Record<string, unknown>) {
+  const ok = await tentar(() => $fetch(`/api/lista/${p.listaItemId}`, { method: 'PATCH', body: corpo }))
+  if (ok) await carregar()
+}
+const alternarPrioridade = (p: PendenteMercado) => mudarNaLista(p, { prioritario: !p.prioritario })
+const levarNestaIda = (p: PendenteMercado) => mudarNaLista(p, { nestaIda: true })
+
+async function tirarDaLista(p: PendenteMercado) {
+  const ok = await tentar(() => $fetch(`/api/lista/${p.listaItemId}`, { method: 'DELETE' }))
+  if (!ok) return
+  await carregar()
+  avisar(`${p.nome} saiu da lista`, 'info', {
+    rotulo: 'Desfazer',
+    executar: async () => {
+      await tentar(() => $fetch(`/api/lista/${p.listaItemId}/reabrir`, { method: 'POST' }))
+      await carregar()
+    },
+  })
+}
+
+async function porNaLista(corpo: Record<string, unknown>, nome: string) {
+  adicionandoNovo.value = false
+  const ok = await tentar(() => $fetch('/api/lista', { method: 'POST', body: { ...corpo, nestaIda: true } }))
+  if (!ok) return
+  avisar(`${nome} entrou na lista desta ida`)
+  await Promise.all([carregar(), recarregarItens()])
+}
+
 function escolherExistente(item: ItemResumo) {
+  if (soNaLista.value) return porNaLista({ itemId: item.id }, item.nome)
   adicionandoNovo.value = false
   const ref = referenciaDe(item.id)
   folha.value = {
@@ -373,6 +423,7 @@ function escolherExistente(item: ItemResumo) {
 }
 
 function escolherNovo(nome: string) {
+  if (soNaLista.value) return porNaLista({ nome, categoriaId: outros.value }, nome)
   adicionandoNovo.value = false
   folha.value = {
     chave: `n${nome}`,
@@ -484,6 +535,18 @@ async function comecar(mercadoId: number) {
 </script>
 
 <style scoped>
+button.prioridade {
+  min-width: 0;
+  padding: 0;
+  font-size: inherit;
+  vertical-align: middle;
+}
+
+.so-lista {
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 .painel {
   position: sticky;
   top: 0.5rem;

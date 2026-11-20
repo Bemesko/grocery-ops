@@ -1,7 +1,7 @@
 // Modo "ocultar valores" no formatarDinheiro. Rode com `make unit`.
 import assert from 'node:assert/strict'
 import { afterEach, describe, it } from 'node:test'
-import { DINHEIRO_OCULTO, definirOcultarDinheiro, formatarDinheiro, formatarDigitos } from '../shared/utils/texto.ts'
+import { DINHEIRO_OCULTO, definirOcultarDinheiro, formatarDesde, formatarDinheiro, formatarDigitos } from '../shared/utils/texto.ts'
 
 describe('formatarDinheiro', () => {
   afterEach(() => definirOcultarDinheiro(() => false))
@@ -36,5 +36,23 @@ describe('formatarDigitos', () => {
     assert.equal(formatarDigitos('0,014', 2), '0,14')
     assert.equal(formatarDigitos('', 2), '')
     assert.equal(formatarDigitos('0,00', 2), '')
+  })
+})
+
+describe('formatarDesde (#68)', () => {
+  const hoje = '2026-11-20'
+  const em = (dia: string, hora = '15:00') => `${dia}T${hora}:00.000Z`
+
+  it('hoje, ontem e há N dias', () => {
+    assert.equal(formatarDesde(em('2026-11-20'), hoje), 'hoje')
+    assert.equal(formatarDesde(em('2026-11-19'), hoje), 'ontem')
+    assert.equal(formatarDesde(em('2026-11-17'), hoje), 'há 3 dias')
+  })
+  it('conta o dia de São Paulo, não o do UTC', () => {
+    // 21h do dia 19 em São Paulo já é 00h do dia 20 em UTC
+    assert.equal(formatarDesde(em('2026-11-20', '00:30'), hoje), 'ontem')
+  })
+  it('a partir de 30 dias mostra a data', () => {
+    assert.equal(formatarDesde(em('2026-10-12'), hoje), 'desde 12/10')
   })
 })

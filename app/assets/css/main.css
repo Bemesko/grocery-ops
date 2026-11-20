@@ -281,6 +281,12 @@ label {
   background: var(--primaria-clara);
 }
 
+.selo.alerta {
+  color: var(--alerta);
+  background: var(--alerta-clara);
+  border: 1px solid var(--alerta);
+}
+
 .selo.igual,
 .selo.neutro {
   color: var(--texto-suave);

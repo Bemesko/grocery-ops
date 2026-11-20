@@ -133,3 +133,51 @@ test('preparar ida: comparação recolhível, par a par com o mais barato e por 
   await rodape.getByRole('button', { name: 'Mostrar menos ▴' }).click()
   await expect(rodape.getByRole('button', { name: 'Começar' })).toHaveCount(1)
 })
+
+test('mexer na lista durante a compra: prioridade, tirar, levar nesta ida e pôr na lista (#45, #69)', async ({ page }) => {
+  await api('POST', '/api/mercados', { nome: 'Mercado A' })
+  await api('POST', '/api/lista', { nome: 'Leite integral', categoriaId: CATEGORIA.laticinios })
+  await api('POST', '/api/lista', { nome: 'Banana', categoriaId: CATEGORIA.hortifruti })
+  await api('POST', '/api/lista', { nome: 'Sabão', categoriaId: CATEGORIA.outros })
+
+  await page.goto('/')
+  await page.getByRole('button', { name: /Preparar ida/ }).click()
+  for (const nome of ['Leite integral', 'Banana']) {
+    await page.locator('li.arrastavel', { hasText: nome }).getByRole('checkbox').check() // Sabão fica de fora desta ida
+  }
+  await page.getByRole('button', { name: 'Começar' }).click()
+  await expect(page).toHaveURL(/\/mercado$/)
+
+  // Prioridade e tirar da lista, sem sair do Mercado.
+  await page.getByRole('button', { name: 'Marcar como prioridade' }).first().click()
+  await expect(page.locator('li.pendente.prioritario')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Tirar Banana da lista' }).click()
+  await expect(page.locator('li.pendente', { hasText: 'Banana' })).toHaveCount(0)
+
+  // O que ficou de fora da ida pode ser levado nela.
+  await page.getByRole('button', { name: /Também na lista/ }).click()
+  await page.getByRole('button', { name: 'Levar Sabão nesta ida' }).click()
+  await expect(page.locator('li.pendente', { hasText: 'Sabão' })).toBeVisible()
+
+  // Só pôr na lista: entra na ida sem ir para o carrinho.
+  await page.getByRole('button', { name: 'Item fora da lista' }).click()
+  await page.getByLabel(/só pôr na lista/).check()
+  await page.getByPlaceholder('Nome do item').fill('Pilha')
+  await page.getByRole('button', { name: /Pilha/ }).first().click()
+  await expect(page.locator('li.pendente', { hasText: 'Pilha' })).toBeVisible()
+
+  // Um item que já estava na lista não vira "fora da lista" ao ser comprado.
+  await page.locator('li.pendente', { hasText: 'Pilha' }).click()
+  await page.locator('#preco').fill('10,00')
+  await page.getByRole('button', { name: 'Registrar' }).click()
+  await expect(page.locator('li.pego', { hasText: 'Pilha' })).toBeVisible()
+  await expect(page.locator('li.pego .selo.alerta')).toHaveCount(0)
+
+  // Um item de fora da lista fica com o selo amarelo.
+  await page.getByRole('button', { name: 'Item fora da lista' }).click()
+  await page.getByPlaceholder('Nome do item').fill('Chiclete')
+  await page.getByRole('button', { name: /Chiclete/ }).first().click()
+  await page.locator('#preco').fill('3,00')
+  await page.getByRole('button', { name: 'Registrar' }).click()
+  await expect(page.locator('li.pego', { hasText: 'Chiclete' }).locator('.selo.alerta')).toHaveText('fora da lista')
+})

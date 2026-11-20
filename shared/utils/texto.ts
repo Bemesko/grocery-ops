@@ -1,4 +1,5 @@
 // Usado no front e na API (Nuxt importa shared/utils nos dois lados).
+import { diasEntre, hojeSP } from './datas.ts'
 
 /** Chave de comparação de nomes: minúsculo, sem acento, espaços colapsados. */
 export function normalizarNome(nome: string): string {
@@ -69,6 +70,16 @@ export function dinheiroParaCampo(centavos: number | null | undefined): string {
 export function formatarQuantidade(quantidade: number, unidade: 'un' | 'kg'): string {
   if (unidade === 'kg') return `${quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} kg`
   return `${quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} un`
+}
+
+/** Há quanto tempo algo está na lista (#68): "hoje", "ontem", "há 3 dias" e, de 30 dias em diante, "desde 12/10". */
+export function formatarDesde(criadoEm: string, hoje = hojeSP()): string {
+  const dia = hojeSP(new Date(criadoEm))
+  const dias = diasEntre(dia, hoje)
+  if (dias <= 0) return 'hoje'
+  if (dias === 1) return 'ontem'
+  if (dias < 30) return `há ${dias} dias`
+  return `desde ${dia.slice(8, 10)}/${dia.slice(5, 7)}`
 }
 
 export function formatarPercentual(fracao: number, casas = 0): string {
