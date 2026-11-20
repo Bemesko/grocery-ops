@@ -95,6 +95,7 @@
                 <span v-if="li.variante" class="suave">· {{ li.variante }}</span>
                 <span v-if="li.origem === 'alexa'" class="selo neutro" title="Pedido para a Alexa">Alexa</span>
               </div>
+              <div class="suave desde">na lista {{ formatarDesde(li.criadoEm) }}</div>
               <div v-if="editando === li.id" class="edicao" @click.stop>
                 <div class="campos-linha">
                   <input
@@ -309,7 +310,10 @@ const notaPorConteudo = computed(() => {
 
 async function adicionar(corpo: Record<string, unknown>) {
   const r = await tentar(() =>
-    $fetch<{ nome: string; jaExistia: boolean }>('/api/lista', { method: 'POST', body: corpo }),
+    $fetch<{ nome: string; jaExistia: boolean }>('/api/lista', {
+      method: 'POST',
+      body: { ...corpo, nestaIda: preparando.value },
+    }),
   )
   if (!r) return
   if (r.jaExistia) avisar(`${r.nome} já estava na lista`)
@@ -457,6 +461,11 @@ async function comecar(mercadoId: number, levarTudo: boolean) {
   position: relative;
   padding: 0;
   overflow: hidden;
+}
+
+.desde {
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .frente {

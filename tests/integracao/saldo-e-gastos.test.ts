@@ -106,6 +106,50 @@ describe('gastos', () => {
     assert.equal(g.semanas, null)
   })
 
+  it('semestre e ano (#63): somam os meses e não têm semanas', async () => {
+    await compraFinalizada(1_000)
+    const ano = hojeSP().slice(0, 4)
+    const mes = Number(hojeSP().slice(5, 7))
+    const sem = conforme(contrato.gastos, await api.get(`/api/gastos?periodo=${ano}-S${mes <= 6 ? 1 : 2}`))
+    assert.equal(sem.tipo, 'semestre')
+    assert.equal(sem.porMes.length, 6)
+    assert.equal(sem.total, 1_000)
+    assert.equal(sem.semanas, null)
+    const a = conforme(contrato.gastos, await api.get(`/api/gastos?periodo=${ano}`))
+    assert.equal(a.tipo, 'ano')
+    assert.equal(a.porMes.length, 12)
+    assert.equal(a.total, 1_000)
+  })
+
+  it('saldo restante (#66): o saldo do ajuste menos o que foi gasto depois', async () => {
+    await api.post('/api/saldo', { saldo: 50_000 })
+    await compraFinalizada(1_000)
+    const g = conforme(contrato.gastos, await api.get('/api/gastos'))
+    assert.equal(g.saldo, 49_000)
+    assert.equal(g.projecao, false)
+  })
+
+  it('mês futuro (#67): semanas projetadas pela recarga mensal, sem gasto', async () => {
+    const proximo = somarDias(`${hojeSP().slice(0, 7)}-01`, 32).slice(0, 7)
+    const sem = conforme(contrato.gastos, await api.get(`/api/gastos?periodo=${proximo}`))
+    assert.equal(sem.projecao, true)
+    assert.equal(sem.saldo, null)
+    assert.ok(sem.semanas!.length >= 4)
+    assert.ok(sem.semanas!.every((x) => x.budget === null && x.gasto === 0 && x.situacao === 'futura'))
+
+    assert.equal((await api.put('/api/configuracao', { recargaMensal: 120_000 })).status, 200)
+    const g = conforme(contrato.gastos, await api.get(`/api/gastos?periodo=${proximo}`))
+    const n = g.semanas!.length
+    assert.equal(g.saldo, 120_000)
+    assert.ok(g.semanas!.every((x) => Math.abs(x.budget! - 120_000 / n) <= 1))
+    // Mais de 12 meses à frente não projeta.
+    const longe = conforme(contrato.gastos, await api.get(`/api/gastos?periodo=${Number(hojeSP().slice(0, 4)) + 2}-01`))
+    assert.equal(longe.semanas, null)
+    // Apagar a recarga.
+    await api.put('/api/configuracao', { recargaMensal: 0 })
+    assert.equal((await api.get<{ recargaMensal: number | null }>('/api/configuracao')).corpo.recargaMensal, null)
+  })
+
   it('compra manual (#65): só o total, conta no saldo e aparece em "Compras sem itens"', async () => {
     await api.post('/api/saldo', { saldo: 50_000 })
     const m = await api.post<{ id: number }>('/api/mercados', { nome: 'Padaria' })

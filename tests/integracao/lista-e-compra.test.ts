@@ -59,6 +59,22 @@ describe('lista', () => {
 })
 
 describe('preparar a ida', () => {
+  it('item adicionado com nestaIda já entra marcado, também o que já estava na lista (#72)', async () => {
+    await api.post('/api/lista', { nome: 'Banana', categoriaId: HORTIFRUTI })
+    await api.post('/api/lista', { nome: 'Leite', categoriaId: 3, nestaIda: true })
+    let itens = conforme(contrato.respostaLista, await api.get('/api/lista')).itens
+    assert.deepEqual(
+      itens.map((i) => [i.nome, i.nestaIda]).sort(),
+      [['Banana', false], ['Leite', true]],
+    )
+    // Pôr de novo o que já estava na lista, agora nesta ida, marca sem duplicar.
+    const de_novo = await api.post<{ jaExistia: boolean }>('/api/lista', { nome: 'Banana', nestaIda: true })
+    assert.equal(de_novo.corpo.jaExistia, true)
+    itens = conforme(contrato.respostaLista, await api.get('/api/lista')).itens
+    assert.equal(itens.length, 2)
+    assert.ok(itens.every((i) => i.nestaIda))
+  })
+
   it('mercados sem tipo; embalagens de tamanhos diferentes estimadas por kg (#12, #14)', async () => {
     const a = await mercado('Atacado')
     const b = await mercado('Variedade')

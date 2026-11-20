@@ -12,6 +12,7 @@ export default defineEventHandler(async (event) => {
   const linha = await adicionarNaLista(sql, item.id, {
     quantidade: texto(corpo?.quantidade, 'quantidade', { max: 40 }),
     prioritario: booleano(corpo?.prioritario, 'prioritario') ?? false,
+    nestaIda: booleano(corpo?.nestaIda, 'nestaIda') ?? false,
   })
   return { id: linha.id, itemId: item.id, nome: item.nome, jaExistia: linha.jaExistia }
 })

@@ -93,14 +93,16 @@ export function evolucaoSemanas(
     const budget = saldoFim === null ? null : Math.round((saldoFim + gastoDali) / (semanas.length - i))
     resultado.unshift({ ...s, budget, gasto, situacao: situacao(s) })
   }
-  // Semanas futuras dividem igualmente o saldo de agora. Enquanto a ida da semana atual não
-  // aconteceu (nada gasto), o budget dela fica reservado; depois, o que sobrou dela passa
-  // para as próximas (como "próximas semanas" no cabeçalho e em Ajustes).
+  // A semana atual guarda o orçamento inteiro dela até acabar (#64): uma compra pequena antes
+  // da ida principal não pode jogar o saldo todo nas semanas futuras. Elas dividem o que
+  // sobra do saldo do início da semana atual depois de reservar o orçamento dela; o que a
+  // atual gastar a mais ou a menos só passa adiante quando ela termina.
   const futuras = resultado.filter((s) => s.situacao === 'futura')
   const atual = resultado.find((s) => s.situacao === 'atual')
   if (saldoFim !== null && futuras.length) {
-    const reservado = atual?.budget && atual.gasto === 0 ? atual.budget : 0
-    for (const s of futuras) s.budget = Math.round((saldoFim - reservado) / futuras.length)
+    const reservado = atual?.budget ?? 0
+    const saldoDeAtual = saldoFim + (atual?.gasto ?? 0)
+    for (const s of futuras) s.budget = Math.round((saldoDeAtual - reservado) / futuras.length)
   }
   return resultado
 }
