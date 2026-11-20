@@ -75,4 +75,19 @@ describe('Alexa → lista', () => {
     assert.equal((await sincronizar()).erro, null)
     conforme(contrato.estadoAlexa, await api.get('/api/alexa'))
   })
+
+  it('falhas seguidas são contadas e o último sucesso é lembrado (#74)', async () => {
+    const ok = await sincronizar()
+    assert.deepEqual([ok.erro, ok.falhasSeguidas], [null, 0])
+    assert.ok(ok.ultimoSucessoEm)
+    amb.ha.modo = '401'
+    await sincronizar()
+    const falha = await sincronizar()
+    assert.equal(falha.falhasSeguidas, 2)
+    assert.equal(falha.ultimoSucessoEm, ok.ultimoSucessoEm)
+    amb.ha.modo = 'ok'
+    const volta = await sincronizar()
+    assert.deepEqual([volta.erro, volta.falhasSeguidas], [null, 0])
+    assert.notEqual(volta.ultimoSucessoEm, null)
+  })
 })

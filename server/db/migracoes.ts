@@ -227,6 +227,15 @@ export const migracoes: { id: string; sql: string }[] = [
     `,
   },
   {
+    // #65: compra registrada à mão, só com mercado, data e total (sem itens).
+    id: '010_compra_manual',
+    sql: /* sql */ `
+      alter table compra drop constraint compra_origem_check;
+      alter table compra add constraint compra_origem_check
+        check (origem in ('app', 'importacao', 'nfce', 'manual'));
+    `,
+  },
+  {
     // #14: atacado/varejo era só um rótulo, sem regra nenhuma.
     id: '009_sem_tipo_de_mercado',
     sql: /* sql */ `

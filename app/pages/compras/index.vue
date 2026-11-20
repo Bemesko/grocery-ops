@@ -10,6 +10,7 @@
     <button type="button" class="botao" :disabled="lendo" @click="leitor = true">
       {{ lendo ? 'Lendo a nota…' : 'Adicionar pela nota fiscal' }}
     </button>
+    <button type="button" class="botao" @click="abrirManual">Compra sem itens (só o total)</button>
     <p v-if="carregado && !compras.length" class="vazio">Nenhuma compra finalizada ainda.</p>
     <ul v-else class="lista">
       <li v-for="c in compras" :key="c.id">
@@ -19,6 +20,7 @@
             <span class="suave"> · {{ dataCurta(c.data) }} · {{ c.itens }} itens</span>
             <span v-if="c.origem === 'importacao'" class="selo neutro">importada</span>
             <span v-else-if="c.origem === 'nfce'" class="selo neutro">pela nota</span>
+            <span v-else-if="c.origem === 'manual'" class="selo neutro">só o total</span>
           </span>
           <span class="num">{{ formatarDinheiro(c.total) }}</span>
         </NuxtLink>
@@ -35,6 +37,25 @@
           <button type="button" @click="pendenteQr = null">Fechar</button>
         </div>
       </div>
+    </div>
+
+    <div v-if="manual" class="fundo" @click.self="manual = null">
+      <form class="folha-mercado" @submit.prevent="criarManual">
+        <h2>Compra sem itens</h2>
+        <p class="suave">Só o total: conta no orçamento da semana pela data e no saldo do VR.</p>
+        <label for="mercado-manual">Mercado</label>
+        <select id="mercado-manual" v-model="manual.mercado">
+          <option v-for="m in mercados" :key="m.id" :value="m.id">{{ m.nome }}</option>
+        </select>
+        <label for="data-manual">Dia da compra</label>
+        <input id="data-manual" v-model="manual.data" type="date" :max="hojeSP()" />
+        <label for="total-manual">Total (R$)</label>
+        <CampoValor id="total-manual" v-model="manual.total" placeholder="0,00" />
+        <div class="linha acoes">
+          <button type="button" @click="manual = null">Cancelar</button>
+          <button type="submit" class="primario" :disabled="!manualValido">Registrar</button>
+        </div>
+      </form>
     </div>
 
     <div v-if="escolha" class="fundo" @click.self="escolha = null">
@@ -143,6 +164,30 @@ async function criar() {
   escolha.value = null
   if (r.resultado === 'ok') return abrir(r)
   avisar(r.mensagem ?? 'Não consegui ler a nota', 'erro')
+}
+
+// #65: compra só com mercado, data e total.
+const manual = ref<{ mercado: number | null; data: string; total: string } | null>(null)
+const manualValido = computed(() => Boolean(manual.value?.mercado && manual.value.data && (parseDinheiro(manual.value.total) ?? 0) > 0))
+
+async function abrirManual() {
+  mercados.value = (await tentar(() => $fetch<Mercado[]>('/api/mercados'))) ?? []
+  if (!mercados.value.length) return avisar('Cadastre um mercado em Ajustes primeiro', 'erro')
+  manual.value = { mercado: mercados.value[0]!.id, data: hojeSP(), total: '' }
+}
+
+async function criarManual() {
+  const m = manual.value
+  if (!m || !manualValido.value) return
+  const r = await tentar(() =>
+    $fetch<{ compraId: number }>('/api/compras/manual', {
+      method: 'POST',
+      body: { mercadoId: m.mercado, data: m.data, total: parseDinheiro(m.total) },
+    }),
+  )
+  if (!r) return
+  manual.value = null
+  await navigateTo(`/compras/${r.compraId}`)
 }
 
 function dataCurta(dia: string) {

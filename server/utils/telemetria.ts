@@ -19,6 +19,9 @@ export const metricas = {
   itensCarrinho: meter.createCounter('grocery.cart.items', {
     description: 'Itens registrados no carrinho (from_list: veio da lista ou não)',
   }),
+  falhasAlexa: meter.createCounter('grocery.alexa.sync_failures', {
+    description: 'Rodadas de sincronização com a Alexa (Home Assistant) que falharam',
+  }),
   itensAlexa: meter.createCounter('grocery.alexa.items_imported', {
     description: 'Itens da lista de compras da Alexa (via Home Assistant) que entraram na lista',
   }),
@@ -41,6 +44,20 @@ export function registrarErro(span: Span | undefined, erro: unknown) {
   if (!span) return
   span.recordException(erro instanceof Error ? erro : String(erro))
   span.setStatus({ code: SpanStatusCode.ERROR, message: erro instanceof Error ? erro.message : String(erro) })
+}
+
+/** Span interno em volta de uma tarefa sem requisição (ex.: as rodadas automáticas da Alexa). */
+export async function emSpan<T>(nome: string, fn: (span: Span) => Promise<T>): Promise<T> {
+  return tracer.startActiveSpan(nome, async (span) => {
+    try {
+      return await fn(span)
+    } catch (erro) {
+      registrarErro(span, erro)
+      throw erro
+    } finally {
+      span.end()
+    }
+  })
 }
 
 /**

@@ -17,6 +17,12 @@
       🛒 Compra em andamento no <strong>{{ dados.compraAtual.mercado }}</strong> → continuar
     </NuxtLink>
 
+    <p v-if="alexaDefasada" class="aviso alerta">
+      Lista da Alexa sem sincronizar{{ alexa?.ultimoSucessoEm ? ` desde ${horaDaAlexa(alexa.ultimoSucessoEm)}` : '' }}:
+      o que for pedido por voz ainda não chegou.
+      <NuxtLink to="/ajustes#alexa">Ver em Ajustes</NuxtLink>
+    </p>
+
     <BuscaItem :itens="itens" @escolher="adicionarExistente" @novo="pedirCategoria" />
 
     <div v-if="novoNome" class="cartao novo">
@@ -218,13 +224,28 @@ onMounted(() => {
   // Traz o que foi pedido para a Alexa sem esperar a próxima rodada do servidor (1 min).
   $fetch<EstadoAlexa>('/api/alexa/sincronizar', { method: 'POST' })
     .then((r) => {
+      alexa.value = r
       if (r.importados) carregar()
     })
     .catch(() => {})
 })
 useAtualizacaoPeriodica(() => {
   if (!editando.value) carregar()
+  $fetch<EstadoAlexa>('/api/alexa')
+    .then((r) => (alexa.value = r))
+    .catch(() => {})
 })
+
+// #74: a falha da Alexa não pode passar despercebida: avisa quando a última rodada falhou e
+// o último sucesso é velho (mais de 1 h) ou não existe.
+const alexa = ref<EstadoAlexa | null>(null)
+const alexaDefasada = computed(() => {
+  const a = alexa.value
+  if (!a?.ligada || !a.erro) return false
+  return !a.ultimoSucessoEm || Date.now() - new Date(a.ultimoSucessoEm).getTime() > 3_600_000
+})
+const horaDaAlexa = (iso: string) =>
+  new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 
 const lista = computed(() => dados.value?.itens ?? [])
 const grupos = computed(() => agruparPorCategoria(lista.value, categorias.value))

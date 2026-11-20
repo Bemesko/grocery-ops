@@ -92,7 +92,7 @@ export const compra = z
     mercado: z.string(),
     status: z.enum(['em_andamento', 'finalizada', 'cancelada']),
     data: dia,
-    origem: z.enum(['app', 'importacao', 'nfce']),
+    origem: z.enum(['app', 'importacao', 'nfce', 'manual']),
     totalNota: centavos.nullable(),
     total: centavos,
     totalItens: centavos,
@@ -235,5 +235,12 @@ export const saldo = z
   .strict()
 
 export const estadoAlexa = z
-  .object({ ligada: z.boolean(), ultimaEm: z.string().nullable(), importados: z.number().int(), erro: z.string().nullable() })
+  .object({
+    ligada: z.boolean(),
+    ultimaEm: z.string().nullable(),
+    importados: z.number().int(),
+    erro: z.string().nullable(),
+    ultimoSucessoEm: z.string().nullable(),
+    falhasSeguidas: z.number().int(),
+  })
   .strict()
