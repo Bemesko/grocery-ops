@@ -61,6 +61,15 @@
           Compras de segunda e terça contam para a semana corrente; de quarta a domingo, para a seguinte. Cada
           semana sai do saldo do mês em que cai o dia de ir ao mercado.
         </p>
+        <label for="recarga-mensal">Recarga mensal do VR</label>
+        <form class="linha" @submit.prevent="salvarRecarga">
+          <CampoValor id="recarga-mensal" v-model="recargaTexto" class="cresce" placeholder="Recarga do mês (R$)" />
+          <button type="submit" class="primario" :disabled="!recargaMudou">Salvar</button>
+        </form>
+        <p class="suave dica">
+          Usada na projeção dos próximos meses em Gastos: a recarga dividida pelas semanas do mês. Deixe em branco
+          para não projetar.
+        </p>
         <details v-if="saldo?.ajustes.length">
           <summary class="suave">Ajustes anteriores</summary>
           <ul class="simples">
@@ -228,6 +237,9 @@ const { itens, recarregar: recarregarItens } = useItens()
 
 const projecao = computed(() => (saldo.value?.budget.configurado ? projetarBudget(saldo.value.budget) : null))
 const diaPreferidoAtual = ref(DIA_PREFERIDO_PADRAO)
+const recargaAtual = ref<number | null>(null)
+const recargaTexto = ref('')
+const recargaMudou = computed(() => (parseDinheiro(recargaTexto.value) ?? null) !== recargaAtual.value)
 
 async function carregarSaldo() {
   saldo.value = (await tentar(() => $fetch<Saldo>('/api/saldo'))) ?? null
@@ -258,7 +270,10 @@ async function carregarImportacoes() {
 onMounted(() => {
   carregarSaldo()
   tentar(() => $fetch<Configuracao>('/api/configuracao')).then((c) => {
-    if (c) diaPreferidoAtual.value = c.diaPreferido
+    if (!c) return
+    diaPreferidoAtual.value = c.diaPreferido
+    recargaAtual.value = c.recargaMensal
+    recargaTexto.value = dinheiroParaCampo(c.recargaMensal)
   })
   carregarMercados()
   carregarImportacoes()
@@ -293,6 +308,15 @@ async function mudarDiaPreferido(valor: string) {
   diaPreferidoAtual.value = Number(valor)
   avisar('Dia de ir ao mercado salvo')
   await carregarSaldo()
+}
+
+async function salvarRecarga() {
+  const valor = parseDinheiro(recargaTexto.value) ?? 0
+  const c = await tentar(() => $fetch<Configuracao>('/api/configuracao', { method: 'PUT', body: { recargaMensal: valor } }))
+  if (!c) return
+  recargaAtual.value = c.recargaMensal
+  recargaTexto.value = dinheiroParaCampo(c.recargaMensal)
+  avisar(c.recargaMensal === null ? 'Recarga mensal removida' : 'Recarga mensal salva')
 }
 
 async function criarMercado() {
