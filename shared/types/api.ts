@@ -238,11 +238,13 @@ export interface GastoItem {
   total: number
   quantidade: number
   unidade: Unidade
+  /** Conteúdo total (kg ou L) das linhas em unidades com embalagem; null se não dá para somar. */
+  conteudo: { qtd: number; base: 'kg' | 'l' } | null
 }
 
 export interface Gastos {
-  tipo: 'mes' | 'trimestre'
-  /** AAAA-MM ou AAAA-Tn. */
+  tipo: 'mes' | 'trimestre' | 'semestre' | 'ano'
+  /** AAAA-MM, AAAA-Tn, AAAA-Sn ou AAAA. */
   periodo: string
   inicio: string
   fim: string
@@ -260,6 +262,10 @@ export interface Gastos {
   foraDaLista: { total: number; conhecido: number }
   /** Budget × gasto por semana (só no mês). */
   semanas: SemanaEvolucao[] | null
+  /** Saldo do VR depois do que o mês já gastou (mês futuro: a recarga mensal); null sem ajuste. */
+  saldo: number | null
+  /** Mês futuro: as semanas são projetadas pela recarga mensal, sem gasto. */
+  projecao: boolean
 }
 }
 
@@ -277,4 +283,6 @@ export interface EstadoAlexa {
 export interface Configuracao {
   /** 0 = segunda … 6 = domingo. */
   diaPreferido: number
+  /** Recarga mensal do VR (centavos), base da projeção dos meses futuros; null se não definida. */
+  recargaMensal: number | null
 }

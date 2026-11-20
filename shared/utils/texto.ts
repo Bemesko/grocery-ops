@@ -82,6 +82,11 @@ export function formatarDesde(criadoEm: string, hoje = hojeSP()): string {
   return `desde ${dia.slice(8, 10)}/${dia.slice(5, 7)}`
 }
 
+/** Conteúdo total de um item ("2,4 kg", "6 L"). */
+export function formatarConteudo(c: { qtd: number; base: 'kg' | 'l' }): string {
+  return `${c.qtd.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${c.base === 'kg' ? 'kg' : 'L'}`
+}
+
 export function formatarPercentual(fracao: number, casas = 0): string {
   return `${(fracao * 100).toLocaleString('pt-BR', { maximumFractionDigits: casas, minimumFractionDigits: casas })}%`
 }

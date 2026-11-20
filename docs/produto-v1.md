@@ -152,9 +152,9 @@ Datas e semanas em `America/Sao_Paulo` (o container roda em UTC).
 - **Orçamento da semana** `B = S0 / N`. O que sobra se redistribui sozinho, porque cada semana recalcula a partir do saldo.
 - **Restante** = `B − G − carrinho`.
 - **Transbordo**: se `G + carrinho > B` e `N > 1`, as próximas semanas ficam com `(S0 − G − carrinho) / (N − 1)`. Na última semana do ciclo, mostrar quanto do saldo passa para o próximo ciclo. Se `carrinho > S`, avisar que falta saldo no VR.
-- **Semana a semana (Gastos)**: com `Sf` = saldo depois do que o ciclo já gastou (último ajuste do mês − compras finalizadas depois dele), o orçamento da semana i é `(Sf + gasto da semana i em diante) / (semanas de i até o fim)`. As semanas futuras dividem `Sf` igualmente; enquanto a semana atual não tem compra, o orçamento dela fica reservado.
+- **Semana a semana (Gastos)**: com `Sf` = saldo depois do que o ciclo já gastou (último ajuste do mês − compras finalizadas depois dele), o orçamento da semana i é `(Sf + gasto da semana i em diante) / (semanas de i até o fim)`. A semana atual guarda o orçamento inteiro dela até terminar (#64), tenha ou não compra, e as semanas futuras dividem o que sobra do saldo do início dela: `(Sf + gasto da atual − B) / semanas futuras`. O que a atual gastar a mais ou a menos só passa adiante quando ela termina.
 
-Exemplo (novembro/2026, sexta): as idas são nos dias 6, 13, 20 e 27; a de sexta 27 vale para a semana de 30/11 e sai do saldo de novembro; uma compra no domingo dia 1 é uma ida atrasada (a de 30/10): vira a semana de 2/11 e novembro fica com 5 semanas. No domingo dia 8, com R$ 660 de saldo depois da ida de sexta 6, as próximas 3 semanas ficam com `660 / 3 = R$ 220` cada.
+Exemplo (novembro/2026, sexta): as idas são nos dias 6, 13, 20 e 27; a de sexta 27 vale para a semana de 30/11 e sai do saldo de novembro; uma compra no domingo dia 1 é uma ida atrasada (a de 30/10): vira a semana de 2/11 e novembro fica com 5 semanas. No domingo dia 8, com R$ 660 de saldo depois de R$ 135,01 gastos na ida de sexta 6, a semana de 9/11 guarda R$ 198,75 (`795,01 / 4`) e as 3 seguintes também ficam com R$ 198,75; só o cabeçalho do Mercado mostra o transbordo ao vivo (`(S0 − G − carrinho) / (N − 1)`).
 
 ### Estimativas
 

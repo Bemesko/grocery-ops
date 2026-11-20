@@ -69,6 +69,7 @@ export async function baseBudget(sql: Sql, hoje = hojeSP()): Promise<BaseBudget>
 /**
  * Budget × gasto de cada semana do ciclo `mes` (AAAA-MM). O saldo vem do último ajuste
  * feito dentro do mês (normalmente a recarga do dia 1); sem ajuste no mês, só o gasto.
+ * `saldo` é o saldo do VR no fim do que já foi gasto no mês (null sem ajuste).
  */
 export async function semanasDoMes(sql: Sql, mes: string, hoje = hojeSP()) {
   const semanas = await semanasComAtraso(sql, mes)
@@ -99,5 +100,15 @@ export async function semanasDoMes(sql: Sql, mes: string, hoje = hojeSP()) {
     `
     saldoFim = (ajuste.saldoCentavos as number) - (r!.total as number)
   }
-  return evolucaoSemanas(semanas, gastoPorSemana, saldoFim, hoje)
+  return { semanas: evolucaoSemanas(semanas, gastoPorSemana, saldoFim, hoje), saldo: saldoFim }
+}
+
+/**
+ * Semanas de um mês futuro (#67), com o orçamento projetado da recarga mensal do VR dividida
+ * igualmente pelas semanas do ciclo. Sem recarga configurada, só as semanas, sem orçamento.
+ */
+export async function semanasProjetadas(sql: Sql, mes: string, recarga: number | null) {
+  const semanas = await semanasDoCiclo(mes, await diaPreferido(sql))
+  const budget = recarga === null ? null : Math.round(recarga / semanas.length)
+  return semanas.map((s) => ({ ...s, budget, gasto: 0, situacao: 'futura' as const }))
 }
