@@ -8,6 +8,8 @@ resources:
   - ingress.yaml
 components:
   - ../../components/postgres-cnpg
+  # Backup do banco (ADR 014 do repo central): WAL contínuo + backup base diário no RustFS.
+  - ../../components/postgres-backup
 # Secret grocery-ops-alexa (lista de compras da Alexa via Home Assistant), criptografado com
 # sops (alexa.sops.yaml): veja o README ("Lista da Alexa").
 generators:

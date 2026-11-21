@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: grocery-ops-db-s3
+type: Opaque
+stringData:
+    ACCESS_KEY_ID: ENC[AES256_GCM,data:RbF+t9/talX1YxtEp4oBsg==,iv:ix2X9rl5ws3lu/8sosDIJ2cigYxkTw9QtR7e0rHvw/A=,tag:OkoSHde+GYHpazp3gDDsEA==,type:str]
+    ACCESS_SECRET_KEY: ENC[AES256_GCM,data:SKhAdOyHAcF2IfDaelzg+fl8LvHyI07FdySmgWSlNJNBmxCvd00kTg==,iv:HbBJEqbryAwv2zxVkYH+pO2Hb12b13R39MwtDdcfYUs=,tag:KUctttIo1uUWxMyJP3pkYA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBKbHJXa0dYYjQ1aURPczJv
+            bFVsdm9SQVZHTEM4elVKb2xWRGpMSlZHb1hRCnA2cGxab0FUejBhanhHcmJjTlFy
+            UTFzUVI3cFN3Y0o2TUZLMVZBT3RyS0UKLS0tIFFjZEgzYUJKUDNTRkVtNklldWJO
+            U1lWK0Z3MlZNTjZmdXc4VXY0bFhhdzgKd/Jnm0gGQMpKjciRtwSNU6Mxabgjwmi9
+            RO9AsAW2ll64AUPXOlfVsMT38QjnaKExipiHgNaH4o9zkXR7crnfrA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1fskvnv59jkjddglqvsllm3d54qtd6xl0u00utexhd0t0vddlfp8qe2plxs
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBlK1lQcjl2dkNTMGFNZXBh
+            SVRGdk9YTWczOGFENGdZZEwwYUdOeU5NQ1hnCmk3dzF3d1Y2Y0RhaHdnVTZrSDgz
+            RGEwbkNST3R4YTVjcUpyQm50ZzJUNmsKLS0tIEdzcEIyOUJBZ1VOU2dSeGsrZkZh
+            azEzcVpRRGdwanB0TENLOU1VOHNhRWsK8boox9X5naYwdPd6m6H6oAXCmSPslhRP
+            v7htgs1VCd0AwOhuo9nbsIJvgVYVyMnx7qae5F74PJcZAojcY828pA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1kn09fr57m2vz4jhpw6e8k9qswm0sl702h6kecry5rn0kpjyyuf4sf33yde
+    lastmodified: "2026-11-21T17:05:22Z"
+    mac: ENC[AES256_GCM,data:3QXPXPT0K4aBYCLH7aZKLAUDZDFiyZ/EU0VRznPH8XLIAwkr9LCThbTkfaSOeNeSfDUgR/iy3BhnXUTU5HHSHrXZjOWcnq+bnrjYKwvtqYBjveW+j20wp+8wJI4OTQ4qbOfzFssWwvlSNs73XjRxL9T86jGUDADvbIzFQP886VA=,iv:HH8BghCizSoBcJHNc734pmyddeUpBr33LHQpV5sPy9c=,tag:BrZyugSbhE12yUHJ1hVr9A==,type:str]
+    unencrypted_regex: ^(apiVersion|metadata|kind|type)$
+    version: 3.13.3
