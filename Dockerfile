@@ -1,6 +1,6 @@
 # Monolito Nuxt 4: SPA + API (Nitro) num processo Node, não-root, na porta 8080 com /healthz.
 # Imagem base sempre por digest (a mesma do Makefile).
-FROM node:26.13.0-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS build
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 # `nuxt build` já roda o prepare; sem scripts de install o npm ci não depende do código.
@@ -9,13 +9,13 @@ COPY . .
 RUN npm run build
 
 # SDK do OpenTelemetry, fora do bundle do Nitro (otel/instrumentation.mjs).
-FROM node:26.13.0-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS otel
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS otel
 WORKDIR /otel
 COPY otel/package.json otel/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 COPY otel/instrumentation.mjs ./
 
-FROM node:26.13.0-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
 ARG VERSION=dev
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
