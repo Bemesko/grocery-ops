@@ -22,7 +22,7 @@ while read -r dir; do
   rendered="$("${REPO_ROOT}/scripts/kustomize-build.sh" "${dir}")"
   # O schema do `Cluster` (CRD do CNPG, components/postgres-cnpg) não está no catálogo
   # padrão do kubeconform.
-  kubeconform -strict -summary -skip Cluster \
+  kubeconform -strict -summary -skip Cluster,ObjectStore,ScheduledBackup \
     -kubernetes-version "${KUBERNETES_VERSION}" \
     -cache "${CACHE_DIR}" \
     -schema-location default - <<<"${rendered}"
